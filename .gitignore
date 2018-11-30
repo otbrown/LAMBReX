@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Project Ignores
+.gcc-flags.json
+libamrex
