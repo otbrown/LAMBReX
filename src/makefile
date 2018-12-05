@@ -12,10 +12,10 @@ CPPFLAGS = -Wall -O3
 HEADERS = lambrex.h
 DEPLIBS = -lamrex
 LIBS = -lgfortran
-OBJS = lambrex.o
+OBJS = lambrex.o Lamb.o
 
 %.o: %.cpp $(HEADERS)
-	$(CXX) $(CPPFLAGS) -c $< -I$(AMREXDIR)/include -I$(INCLUDEDIR)
+	$(CXX) $(CPPFLAGS) -c $< -I. -I$(AMREXDIR)/include -I$(INCLUDEDIR)
 
 liblambrex.a: $(OBJS)
 	ar rcs liblambrex.a $(OBJS)
