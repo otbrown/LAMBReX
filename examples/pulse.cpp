@@ -3,11 +3,16 @@
 
 int main (int argc, char * argv[])
 {
-  lambrexInit();
+  int nx = 10;
+  int ny = 10;
+  int nz = 50;
+  double tau = 0.5;
+
+  Lamb * lbrx = lambrexInit(nx, ny, nz, tau, tau);
 
   printf("Hello world.\n");
 
-  lambrexFinalize();
+  lambrexFinalize(lbrx);
 
   return 0;
 }
