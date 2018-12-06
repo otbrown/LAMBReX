@@ -8,7 +8,7 @@ int main (int argc, char * argv[])
   int nz = 50;
   double tau = 0.5;
 
-  Lamb * lbrx = lambrexInit(nx, ny, nz, tau, tau);
+  Lamb * lbrx = lambrexInit(argc, argv, nx, ny, nz, tau, tau);
 
   printf("Hello world.\n");
 
