@@ -10,14 +10,14 @@ CPPFLAGS = -Wall -O3
 
 # dependencies
 HEADERS = lambrex.h
-DEPLIBS = -lamrex -llambrex
+DEPLIBS = -llambrex -lamrex
 LIBS = -lgfortran
 
 %.o: %.cpp $(HEADERS)
 	$(CXX) $(CPPFLAGS) -c $< -I../include
 
 pulse: pulse.o $(DEPLIBS)
-	$(CXX) $< -o $@ -L$(AMREXDIR)/lib -L$(LAMBREXDIR) $(DEPLIBS) $(LIBS)
+	$(CXX) $< -o $@ -L$(LAMBREXDIR) -L$(AMREXDIR)/lib $(DEPLIBS) $(LIBS)
 
 .PHONY: clean
 
