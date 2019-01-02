@@ -14,7 +14,7 @@ DEPLIBS = -llambrex -lamrex
 LIBS = -lgfortran
 
 %.o: %.cpp $(HEADERS)
-	$(CXX) $(CPPFLAGS) -c $< -I../include
+	$(CXX) $(CPPFLAGS) -c $< -I../include -I../libamrex/include
 
 pulse: pulse.o $(DEPLIBS)
 	$(CXX) $< -o $@ -L$(LAMBREXDIR) -L$(AMREXDIR)/lib $(DEPLIBS) $(LIBS)
