@@ -7,8 +7,9 @@ int main (int argc, char * argv[])
   int ny = 10;
   int nz = 50;
   double tau = 0.5;
+  int periodicity[3] = {1, 1, 1};
 
-  Lamb * lbrx = lambrexInit(argc, argv, nx, ny, nz, tau, tau);
+  Lamb * lbrx = lambrexInit(argc, argv, nx, ny, nz, tau, tau, periodicity);
 
   printf("Hello world.\n");
 
