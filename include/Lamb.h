@@ -5,21 +5,22 @@
 #include "AMReX_Box.H"
 #include "AMReX_RealBox.H"
 #include "AMReX_Geometry.H"
+#include "AMReX_FArrayBox.H"
 
 class Lamb {
 private:
   // physical dimensions of the outer domain
-  const int _NDIMS = AMREX_SPACEDIM;
-  const int _NX;
-  const int _NY;
-  const int _NZ;
-  const int _NUMEL = _NX * _NY * _NZ;
+  const int NDIMS = AMREX_SPACEDIM;
+  const int NX;
+  const int NY;
+  const int NZ;
+  const int NUMEL = NX * NY * NZ;
   const int COORD_SYS = 0;
-  int _periodicity[AMREX_SPACEDIM];
+  int PERIODICITY[AMREX_SPACEDIM];
 
   // relaxation times
-  const double _TAU_S; // shear
-  const double _TAU_B; // bulk
+  const double TAU_S; // shear
+  const double TAU_B; // bulk
 
   // speed of sound squared
   const double CS2 = 1.0 / 3.0;
@@ -37,7 +38,11 @@ private:
   double * velocity;
   double * force;
 
-  void buildGeo();
+  // distribution function (work array)
+  amrex::FArrayBox * dist_fn;
+
+  // member functions
+  void buildGeometry();
 
 public:
   Lamb(int, int, int, double, double, int *);
