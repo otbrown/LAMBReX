@@ -47,6 +47,11 @@ private:
 public:
   Lamb(int, int, int, double, double, int *);
   ~Lamb();
+
+  void setDensity(double);
+  void setDensity(double *);
+  void setVelocity(double);
+  void setVelocity(double *);
 };
 
 #endif

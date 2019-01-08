@@ -1,3 +1,4 @@
+#include <cstring>
 #include "Lamb.h"
 #include "AMReX_IntVect.H"
 #include "AMReX_IndexType.H"
@@ -28,8 +29,8 @@ Lamb::Lamb(int nx, int ny, int nz, double tau_s, double tau_b, int * periodicity
   }
 
   density = new double[NUMEL];
-  velocity = new double[NUMEL];
-  force = new double[NUMEL];
+  velocity = new double[NUMEL * NDIMS];
+  force = new double[NUMEL * NDIMS];
 
   buildGeometry();
 
@@ -44,5 +45,31 @@ Lamb::~Lamb() {
   delete[] force;
   delete dist_fn;
 
+  return;
+}
+
+void Lamb::setDensity(double const_density) {
+  // set density array to one value everywhere
+  for (int i = 0; i < NUMEL; ++i) density[i] = const_density;
+  return;
+}
+
+void Lamb::setDensity(double * rho) {
+  // set density to match provided array
+  size_t count = NUMEL * sizeof(double);
+  memcpy(density, rho, count);
+  return;
+}
+
+void Lamb::setVelocity(double const_velocity) {
+  // set velocity to one value everywhere
+  for (int i = 0; i < NUMEL * NDIMS; ++i) velocity[i] = const_velocity;
+  return;
+}
+
+void Lamb::setVelocity(double * u) {
+  // set velocity to match provided array
+  size_t count = NUMEL * NDIMS * sizeof(double);
+  memcpy(velocity, u, count);
   return;
 }
