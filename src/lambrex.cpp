@@ -16,10 +16,11 @@ Lamb * lambrexInit(int argc, char ** argv, int nx, int ny, int nz, double tau_s,
 void lambrexFinalize(Lamb * lbrx) {
   printf("Finalising LAMBReX\n");
 
-  amrex::Finalize();
-
+  // Lamb must be deleted before amrex::Finalize() is called,
+  // as amrex::Finalize() invalidates some internal destructors
   delete lbrx;
-  printf("Lamb deleted.\n");
+
+  amrex::Finalize();
 
   return;
 }
