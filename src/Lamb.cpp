@@ -6,13 +6,13 @@
 #include "AMReX_FArrayBox.H"
 
 void Lamb::buildGeometry() {
-  const amrex::IntVect lo_corner( AMREX_D_DECL(0, 0, 0) );
-  const amrex::IntVect hi_corner( AMREX_D_DECL(NX-1, NY-1, NZ-1) );
-  const amrex::IndexType idx_type( {AMREX_D_DECL(0, 0, 0)} );
+  const amrex::IntVect LO_CORNER( AMREX_D_DECL(0, 0, 0) );
+  const amrex::IntVect HI_CORNER( AMREX_D_DECL(NX-1, NY-1, NZ-1) );
+  const amrex::IndexType IDX_TYPE( {AMREX_D_DECL(0, 0, 0)} );
 
-  idx_domain.setSmall(lo_corner);
-  idx_domain.setBig(hi_corner);
-  idx_domain.setType(idx_type);
+  idx_domain.setSmall(LO_CORNER);
+  idx_domain.setBig(HI_CORNER);
+  idx_domain.setType(IDX_TYPE);
 
   phys_domain.setLo( {AMREX_D_DECL(0.0, 0.0, 0.0)} );
   phys_domain.setHi( {AMREX_D_DECL((double) NX-1, (double) NY-1, (double) NZ-1)} );
@@ -28,48 +28,68 @@ Lamb::Lamb(int nx, int ny, int nz, double tau_s, double tau_b, int * periodicity
     PERIODICITY[dim] = periodicity[dim];
   }
 
-  density = new double[NUMEL];
-  velocity = new double[NUMEL * NDIMS];
-  force = new double[NUMEL * NDIMS];
-
   buildGeometry();
 
-  dist_fn = new amrex::FArrayBox(idx_domain, 1);
+  density = new amrex::FArrayBox(idx_domain);
+  velocity = new amrex::FArrayBox(idx_domain, NDIMS);
+  force = new amrex::FArrayBox(idx_domain, NDIMS);
+
+  dist_fn = new amrex::FArrayBox(idx_domain, NUM_VELOCITIES);
 
   return;
 };
 
 Lamb::~Lamb() {
-  delete[] density;
-  delete[] velocity;
-  delete[] force;
+  delete density;
+  delete velocity;
+  delete force;
   delete dist_fn;
 
   return;
 }
 
-void Lamb::setDensity(double const_density) {
+void Lamb::setDensity(double uniform_density) {
   // set density array to one value everywhere
-  for (int i = 0; i < NUMEL; ++i) density[i] = const_density;
+  density->setVal(uniform_density);
   return;
 }
 
 void Lamb::setDensity(double * rho) {
+  amrex::IntVect pos(0);
   // set density to match provided array
-  size_t count = NUMEL * sizeof(double);
-  memcpy(density, rho, count);
+  for (int i = 0; i < NX; ++i) {
+    pos.setVal(0, i);
+    for (int j = 0; j < NY; ++j) {
+      pos.setVal(1, j);
+      for (int k = 0; k < NZ; ++k) {
+        pos.setVal(2, k);
+        (*density)(pos) = rho[i*NY*NZ + j*NZ + k];
+      }
+    }
+  }
   return;
 }
 
-void Lamb::setVelocity(double const_velocity) {
+void Lamb::setVelocity(double uniform_velocity) {
   // set velocity to one value everywhere
-  for (int i = 0; i < NUMEL * NDIMS; ++i) velocity[i] = const_velocity;
+  velocity->setVal(uniform_velocity);
   return;
 }
 
 void Lamb::setVelocity(double * u) {
+  amrex::IntVect pos(0);
   // set velocity to match provided array
-  size_t count = NUMEL * NDIMS * sizeof(double);
-  memcpy(velocity, u, count);
+  for (int i = 0; i < NX; ++i) {
+    pos.setVal(0, i);
+    for (int j = 0; j < NY; ++j) {
+      pos.setVal(1, j);
+      for (int k = 0; k < NZ; ++k) {
+        pos.setVal(2, k);
+        for (int n = 0; n < NDIMS; ++n) {
+          (*velocity)(pos, n) = u[i*NY*NZ*NDIMS + j*NZ*NDIMS + k*NDIMS + n];
+        }
+      }
+    }
+  }
   return;
 }

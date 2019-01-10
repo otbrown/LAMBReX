@@ -18,10 +18,10 @@ private:
   const int COORD_SYS = 0;
   int PERIODICITY[AMREX_SPACEDIM];
 
-  // relaxation times
+  // model parameters
+  const int NUM_VELOCITIES = 15;
   const double TAU_S; // shear
   const double TAU_B; // bulk
-
   // speed of sound squared
   const double CS2 = 1.0 / 3.0;
 
@@ -34,9 +34,9 @@ private:
   amrex::Geometry geometry;
 
   // hydrodynamic variables (output arrays)
-  double * density;
-  double * velocity;
-  double * force;
+  amrex::FArrayBox * density;
+  amrex::FArrayBox * velocity;
+  amrex::FArrayBox * force;
 
   // distribution function (work array)
   amrex::FArrayBox * dist_fn;
@@ -52,6 +52,7 @@ public:
   void setDensity(double *);
   void setVelocity(double);
   void setVelocity(double *);
+  void calcEquilibriumDist();
 };
 
 #endif
