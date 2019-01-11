@@ -31,13 +31,15 @@ int main (int argc, char * argv[])
   Lamb * lbrx = lambrexInit(argc, argv, nx, ny, nz, tau, tau, periodicity);
 
   // provide LAMBReX with initial density and velocity
-  // density is memcpy'd so safe to free
+  // density is copied so safe to free
   lbrx->setDensity(rho);
   printf("Density initialised.\n");
   lbrx->setVelocity(0.0);
   printf("Velocity initialised.\n");
-
   delete[] rho;
+
+  lbrx->calcEquilibriumDist();
+  printf("Equilibrium distribution calculated.\n");
 
   lambrexFinalize(lbrx);
 
