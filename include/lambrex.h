@@ -3,7 +3,7 @@
 
 #include "Lamb.h"
 
-Lamb * lambrexInit(int, char **, int, int, int, double, double, int *);
+Lamb * lambrexInit(int, char **, int, int, int, double, double, int (&)[NDIMS]);
 void lambrexFinalize(Lamb *);
 
 #endif

@@ -2,7 +2,7 @@
 #include "AMReX.H"
 #include "lambrex.h"
 
-Lamb * lambrexInit(int argc, char ** argv, int nx, int ny, int nz, double tau_s, double tau_b, int * periodicity) {
+Lamb * lambrexInit(int argc, char ** argv, int nx, int ny, int nz, double tau_s, double tau_b, int (&periodicity)[NDIMS]) {
   printf("Initialising LAMBReX\n");
 
   amrex::Initialize(argc, argv, false);
