@@ -93,3 +93,78 @@ void Lamb::setVelocity(double * u) {
   }
   return;
 }
+
+void Lamb::calcEquilibriumDist() {
+  double u2[3], mod_sq, u_cs2[3], u2_2cs4[3], uv_cs4, vw_cs4, uw_cs4, mod_sq_2;
+  double u[3], rho, rho_w[3];
+  amrex::IntVect pos(0);
+
+  for (int i = 0; i < NX; ++i) {
+    pos.setVal(0, i);
+    for (int j = 0; j < NY; ++j) {
+      pos.setVal(1, j);
+      for (int k = 0; k < NZ; ++k) {
+        pos.setVal(2, k);
+
+        // get density and velocity at this point in space
+        rho = (*density)(pos);
+        u[0] = (*velocity)(pos, 0);
+        u[1] = (*velocity)(pos, 1);
+        u[2] = (*velocity)(pos, 2);
+
+        // calculate coefficients
+        rho_w[0] = rho * 2.0 / 9.0;
+        rho_w[1] = rho / 9.0;
+        rho_w[2] = rho / 72.0;
+
+        u2[0] = u[0]*u[0];
+        u2[1] = u[1]*u[1];
+        u2[2] = u[2]*u[2];
+
+        u_cs2[0] = u[0] / CS2;
+        u_cs2[1] = u[1] / CS2;
+        u_cs2[2] = u[2] / CS2;
+
+        u2_2cs4[0] = u2[0] / (2.0 * CS2 * CS2);
+        u2_2cs4[1] = u2[1] / (2.0 * CS2 * CS2);
+        u2_2cs4[2] = u2[2] / (2.0 * CS2 * CS2);
+
+        uv_cs4 = u_cs2[0] * u_cs2[1];
+        vw_cs4 = u_cs2[1] * u_cs2[2];
+        uw_cs4 = u_cs2[0] * u_cs2[2];
+
+        mod_sq = (u2[0] + u2[1] + u2[2]) / (2.0 * CS2);
+        mod_sq_2 = (u2[0] + u2[1] + u2[2]) * (1 - CS2) / (2.0 * CS2 * CS2);
+
+        // set distribution function
+        (*dist_fn)(pos, 0) = rho_w[0] * (1.0 - mod_sq);
+
+        (*dist_fn)(pos, 1) = rho_w[1] * (1.0 - mod_sq + u_cs2[0] + u2_2cs4[0]);
+        (*dist_fn)(pos, 2) = rho_w[1] * (1.0 - mod_sq - u_cs2[0] + u2_2cs4[0]);
+        (*dist_fn)(pos, 3) = rho_w[1] * (1.0 - mod_sq + u_cs2[1] + u2_2cs4[1]);
+        (*dist_fn)(pos, 4) = rho_w[1] * (1.0 - mod_sq - u_cs2[1] + u2_2cs4[1]);
+        (*dist_fn)(pos, 5) = rho_w[1] * (1.0 - mod_sq + u_cs2[2] + u2_2cs4[2]);
+        (*dist_fn)(pos, 6) = rho_w[1] * (1.0 - mod_sq - u_cs2[2] + u2_2cs4[2]);
+
+        (*dist_fn)(pos, 7) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] + u_cs2[2]
+                                      + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
+        (*dist_fn)(pos, 8) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] - u_cs2[2]
+                                      + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
+        (*dist_fn)(pos, 9) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] + u_cs2[2]
+                                      - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
+        (*dist_fn)(pos, 10) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] - u_cs2[2]
+                                       - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
+        (*dist_fn)(pos, 11) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] + u_cs2[2]
+                                       - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
+        (*dist_fn)(pos, 12) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] - u_cs2[2]
+                                       - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
+        (*dist_fn)(pos, 13) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] + u_cs2[2]
+                                       + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
+        (*dist_fn)(pos, 14) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] - u_cs2[2]
+                                       + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
+      }
+    }
+  }
+
+  return;
+}
