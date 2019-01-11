@@ -4,6 +4,8 @@
 #include "AMReX_Config.H"
 #include "AMReX_Box.H"
 #include "AMReX_RealBox.H"
+#include "AMReX_IntVect.H"
+#include "AMReX_IndexType.H"
 #include "AMReX_Geometry.H"
 #include "AMReX_FArrayBox.H"
 
@@ -19,8 +21,8 @@ private:
   const int NY;
   const int NZ;
   const int NUMEL = NX * NY * NZ;
-  const int COORD_SYS = 0;
-  int PERIODICITY[NDIMS];
+  const int COORD_SYS;
+  const int PERIODICITY[NDIMS];
 
   // model parameters
   const double TAU_S; // shear
@@ -39,21 +41,19 @@ private:
   amrex::Geometry geometry;
 
   // hydrodynamic variables (output arrays)
-  amrex::FArrayBox * density;
-  amrex::FArrayBox * velocity;
-  amrex::FArrayBox * force;
+  amrex::FArrayBox density;
+  amrex::FArrayBox velocity;
+  amrex::FArrayBox force;
 
   // distribution function (work array)
-  amrex::FArrayBox * dist_fn;
+  amrex::FArrayBox dist_fn;
 
   // member functions
-  void buildGeometry();
   void collide();
   void propagate();
 
 public:
-  Lamb(int, int, int, double, double, int *);
-  ~Lamb();
+  Lamb(int, int, int, double, double, int (&)[NDIMS]);
 
   int getTimeStep() { return time_step; }
   void setDensity(double);
