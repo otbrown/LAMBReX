@@ -1,4 +1,5 @@
 #include <cstring>
+#include <iostream>
 #include "Lamb.h"
 #include "AMReX_IntVect.H"
 #include "AMReX_IndexType.H"
@@ -164,6 +165,25 @@ void Lamb::calcEquilibriumDist() {
                                        + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
       }
     }
+  }
+
+  return;
+}
+
+void Lamb::printDensity() {
+  amrex::IntVect pos(0);
+
+  for (int k = 0; k < NZ; ++k) {
+    pos.setVal(2, k);
+    for (int j = 0; j < NY; ++j) {
+      pos.setVal(1, j);
+      for (int i = 0; i < NX; ++i) {
+        pos.setVal(0, i);
+        printf("%g ", (*density)(pos));
+      }
+      printf("\n");
+    }
+    printf("\n");
   }
 
   return;

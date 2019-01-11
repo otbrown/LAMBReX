@@ -53,6 +53,8 @@ public:
   void setVelocity(double);
   void setVelocity(double *);
   void calcEquilibriumDist();
+
+  void printDensity();
 };
 
 #endif
