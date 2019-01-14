@@ -1,8 +1,102 @@
 #include <cstring>
 #include <iostream>
+#include <array>
 #include "Lamb.h"
 
 void Lamb::collide() {
+  amrex::IntVect pos(0);
+  std::array<double, NMODES> mode;
+  double usq, TrS;
+  double stress[NMODES][NMODES];
+  int a, b, m, p;
+
+  for (int i = 0; i < NX; ++i) {
+    pos.setVal(0, i);
+    for (int j = 0; j < NY; ++j) {
+      pos.setVal(1, j);
+      for (int k = 0; k < NZ; ++k) {
+        pos.setVal(2, k);
+
+        for (m = 0; m < NMODES; ++m) {
+          mode[m] = 0.0;
+          for (p = 0; p < NMODES; ++p) {
+            mode[m] += dist_fn(pos,p) * MODE_MATRIX[m][p];
+          }
+        }
+
+        density(pos) = mode[0];
+
+        // no forcing is currently present in the model,
+        // so we disregard uDOTf for now
+        usq = 0.0;
+        for (a = 0; a < NDIMS; ++a) {
+          velocity(pos, a) = mode[a+1] / density(pos);
+          usq += velocity(pos, a) * velocity(pos, a);
+        }
+
+        stress[0][0] = mode[4];
+        stress[0][1] = mode[5];
+        stress[0][2] = mode[6];
+
+        stress[1][0] = mode[5];
+        stress[1][1] = mode[7];
+        stress[1][2] = mode[8];
+
+        stress[2][0] = mode[6];
+        stress[2][1] = mode[8];
+        stress[2][2] = mode[9];
+
+        // Form the trace
+        TrS = 0.0;
+        for (a = 0; a < NDIMS; ++a) {
+          TrS += stress[a][a];
+        }
+        // Form the traceless part
+        for (a = 0; a < NDIMS; ++a) {
+          stress[a][a] -= (TrS / NDIMS);
+        }
+
+        // Relax the trace
+        TrS -= OMEGA_B * (TrS - density(pos)*usq);
+        // Relax the traceless part
+        for (a = 0; a < NDIMS; ++a) {
+          for (b = 0; b < NDIMS; ++b) {
+            stress[a][b] -= OMEGA_S * (stress[a][b] - density(pos)
+                                    * ( velocity(pos,a) * velocity(pos,b)
+                                        - usq * DELTA[a][b]) );
+          }
+          stress[a][a] += (TrS / NDIMS);
+        }
+
+        // copy stress back into mode
+        mode[4] = stress[0][0];
+        mode[5] = stress[0][1];
+        mode[6] = stress[0][2];
+
+        mode[7] = stress[1][1];
+        mode[8] = stress[1][2];
+
+        mode[9] = stress[2][2];
+
+        // Ghosts are relaxed to zero immediately
+        mode[10] = 0.0;
+        mode[11] = 0.0;
+        mode[12] = 0.0;
+        mode[13] = 0.0;
+        mode[14] = 0.0;
+
+        // project back to the velocity basis
+        for (p = 0; p < NMODES; ++p) {
+          dist_fn(pos, p) = 0.0;
+          for (m = 0; m < NMODES; ++m) {
+            dist_fn(pos, p) = mode[m] * MODE_MATRIX_INVERSE[p][m];
+          }
+        }
+
+      } // k
+    } // j
+  } // i
+
   return;
 }
 
@@ -14,7 +108,8 @@ Lamb::Lamb(int nx, int ny, int nz, double tau_s, double tau_b,
            int (&periodicity)[NDIMS])
 : NX(nx), NY(ny), NZ(nz), COORD_SYS(0),
   PERIODICITY{ periodicity[0], periodicity[1], periodicity[2] },
-  TAU_S(tau_s), TAU_B(tau_b),
+  TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
+  OMEGA_B(1.0/(tau_b+0.5)),
   idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
               amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
               amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
@@ -31,6 +126,7 @@ void Lamb::setDensity(double uniform_density) {
 }
 
 void Lamb::setDensity(double * rho) {
+  // could this be done by getting a position from a boxiter?
   amrex::IntVect pos(0);
   // set density to match provided array
   for (int i = 0; i < NX; ++i) {
@@ -75,6 +171,8 @@ void Lamb::calcEquilibriumDist() {
   double u[NDIMS], rho, rho_w[NDIMS];
   amrex::IntVect pos(0);
 
+  // similarly here is there a provided iterator that could be used?
+  // only use the triple nested for to generate position argument
   for (int i = 0; i < NX; ++i) {
     pos.setVal(0, i);
     for (int j = 0; j < NY; ++j) {
@@ -175,9 +273,9 @@ void Lamb::printDensity() {
 }
 
 // static member definitions
-const double Lamb::IDENTITY[NDIMS][NDIMS] = { {1.0, 0.0, 0.0},
-                                              {0.0, 1.0, 0.0},
-                                              {0.0, 0.0, 1.0} };
+const double Lamb::DELTA[NDIMS][NDIMS] = { {1.0 / NMODES, 0.0, 0.0},
+                                              {0.0, 1.0 / NMODES, 0.0},
+                                              {0.0, 0.0, 1.0 / NMODES} };
 
 const double Lamb::MODE_MATRIX[NMODES][NMODES] =
 {

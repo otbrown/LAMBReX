@@ -25,10 +25,12 @@ private:
   const int PERIODICITY[NDIMS];
 
   // model parameters
+  const double CS2 = 1.0 / 3.0; // speed of sound squared
   const double TAU_S; // shear
   const double TAU_B; // bulk
-  const double CS2 = 1.0 / 3.0; // speed of sound squared
-  static const double IDENTITY[NDIMS][NDIMS];
+  const double OMEGA_S;
+  const double OMEGA_B;
+  static const double DELTA[NDIMS][NDIMS];
   static const double MODE_MATRIX[NMODES][NMODES];
   static const double MODE_MATRIX_INVERSE[NMODES][NMODES];
 
