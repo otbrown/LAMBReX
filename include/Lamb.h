@@ -20,7 +20,7 @@ private:
   const int NX;
   const int NY;
   const int NZ;
-  const int NUMEL = NX * NY * NZ;
+  const int NUMEL;
   const int COORD_SYS;
   const int PERIODICITY[NDIMS];
 
@@ -55,16 +55,17 @@ private:
   void propagate();
 
 public:
-  Lamb(int, int, int, double, double, int (&)[NDIMS]);
+  Lamb(int const, int const, int const, double const, double const,
+    int (&)[NDIMS]);
 
   int getTimeStep() { return time_step; }
-  void setDensity(double);
-  void setDensity(double *);
-  void setVelocity(double);
-  void setVelocity(double *);
+  void setDensity(double const);
+  void setDensity(double const * const);
+  void setVelocity(double const);
+  void setVelocity(double const * const);
   void calcEquilibriumDist();
 
-  int iterate(int);
+  int iterate(int const);
 
   void printDensity();
 };

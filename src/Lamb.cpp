@@ -104,9 +104,9 @@ void Lamb::propagate() {
   return;
 }
 
-Lamb::Lamb(int nx, int ny, int nz, double tau_s, double tau_b,
-           int (&periodicity)[NDIMS])
-: NX(nx), NY(ny), NZ(nz), COORD_SYS(0),
+Lamb::Lamb(int const nx, int const ny, int const nz, double const tau_s,
+  double const tau_b, int (&periodicity)[NDIMS])
+: NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
   PERIODICITY{ periodicity[0], periodicity[1], periodicity[2] },
   TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
   OMEGA_B(1.0/(tau_b+0.5)),
@@ -119,13 +119,13 @@ Lamb::Lamb(int nx, int ny, int nz, double tau_s, double tau_b,
   density(idx_domain), velocity(idx_domain, NDIMS), force(idx_domain, NDIMS),
   dist_fn(idx_domain, NMODES) {};
 
-void Lamb::setDensity(double uniform_density) {
+void Lamb::setDensity(double const uniform_density) {
   // set density array to one value everywhere
   density.setVal(uniform_density);
   return;
 }
 
-void Lamb::setDensity(double * rho) {
+void Lamb::setDensity(double const * const rho) {
   // could this be done by getting a position from a boxiter?
   amrex::IntVect pos(0);
   // set density to match provided array
@@ -142,13 +142,13 @@ void Lamb::setDensity(double * rho) {
   return;
 }
 
-void Lamb::setVelocity(double uniform_velocity) {
+void Lamb::setVelocity(double const uniform_velocity) {
   // set velocity to one value everywhere
   velocity.setVal(uniform_velocity);
   return;
 }
 
-void Lamb::setVelocity(double * u) {
+void Lamb::setVelocity(double const * const u) {
   amrex::IntVect pos(0);
   // set velocity to match provided array
   for (int i = 0; i < NX; ++i) {
@@ -243,7 +243,7 @@ void Lamb::calcEquilibriumDist() {
   return;
 }
 
-int Lamb::iterate(int nsteps) {
+int Lamb::iterate(int const nsteps) {
   for (int t = 0; t < nsteps; ++t){
     collide();
     propagate();
@@ -274,8 +274,8 @@ void Lamb::printDensity() {
 
 // static member definitions
 const double Lamb::DELTA[NDIMS][NDIMS] = { {1.0 / NMODES, 0.0, 0.0},
-                                              {0.0, 1.0 / NMODES, 0.0},
-                                              {0.0, 0.0, 1.0 / NMODES} };
+                                           {0.0, 1.0 / NMODES, 0.0},
+                                           {0.0, 0.0, 1.0 / NMODES} };
 
 const double Lamb::MODE_MATRIX[NMODES][NMODES] =
 {
