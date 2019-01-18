@@ -1,9 +1,9 @@
 #include <cstring>
 #include <iostream>
 #include <array>
-#include "Lamb.h"
+#include "Simulation.h"
 
-void Lamb::collide() {
+void Simulation::collide() {
   amrex::IntVect pos(0);
   std::array<double, NMODES> mode;
   double usq, TrS;
@@ -100,12 +100,12 @@ void Lamb::collide() {
   return;
 }
 
-void Lamb::propagate() {
+void Simulation::propagate() {
   return;
 }
 
-Lamb::Lamb(int const nx, int const ny, int const nz, double const tau_s,
-  double const tau_b, int (&periodicity)[NDIMS])
+Simulation::Simulation(int const nx, int const ny, int const nz,
+  double const tau_s, double const tau_b, int (&periodicity)[NDIMS])
 : NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
   PERIODICITY{ periodicity[0], periodicity[1], periodicity[2] },
   TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
@@ -119,13 +119,13 @@ Lamb::Lamb(int const nx, int const ny, int const nz, double const tau_s,
   density(idx_domain), velocity(idx_domain, NDIMS), force(idx_domain, NDIMS),
   dist_fn(idx_domain, NMODES) {};
 
-void Lamb::setDensity(double const uniform_density) {
+void Simulation::setDensity(double const uniform_density) {
   // set density array to one value everywhere
   density.setVal(uniform_density);
   return;
 }
 
-void Lamb::setDensity(double const * const rho) {
+void Simulation::setDensity(double const * const rho) {
   // could this be done by getting a position from a boxiter?
   amrex::IntVect pos(0);
   // set density to match provided array
@@ -142,13 +142,13 @@ void Lamb::setDensity(double const * const rho) {
   return;
 }
 
-void Lamb::setVelocity(double const uniform_velocity) {
+void Simulation::setVelocity(double const uniform_velocity) {
   // set velocity to one value everywhere
   velocity.setVal(uniform_velocity);
   return;
 }
 
-void Lamb::setVelocity(double const * const u) {
+void Simulation::setVelocity(double const * const u) {
   amrex::IntVect pos(0);
   // set velocity to match provided array
   for (int i = 0; i < NX; ++i) {
@@ -166,7 +166,7 @@ void Lamb::setVelocity(double const * const u) {
   return;
 }
 
-void Lamb::calcEquilibriumDist() {
+void Simulation::calcEquilibriumDist() {
   double u2[NDIMS], mod_sq, u_cs2[NDIMS], u2_2cs4[NDIMS], uv_cs4, vw_cs4, uw_cs4, mod_sq_2;
   double u[NDIMS], rho, rho_w[NDIMS];
   amrex::IntVect pos(0);
@@ -243,7 +243,7 @@ void Lamb::calcEquilibriumDist() {
   return;
 }
 
-int Lamb::iterate(int const nsteps) {
+int Simulation::iterate(int const nsteps) {
   for (int t = 0; t < nsteps; ++t){
     collide();
     propagate();
@@ -253,7 +253,7 @@ int Lamb::iterate(int const nsteps) {
   return time_step;
 }
 
-void Lamb::printDensity() {
+void Simulation::printDensity() {
   amrex::IntVect pos(0);
 
   for (int k = 0; k < NZ; ++k) {
@@ -273,11 +273,11 @@ void Lamb::printDensity() {
 }
 
 // static member definitions
-const double Lamb::DELTA[NDIMS][NDIMS] = { {1.0 / NMODES, 0.0, 0.0},
+const double Simulation::DELTA[NDIMS][NDIMS] = { {1.0 / NMODES, 0.0, 0.0},
                                            {0.0, 1.0 / NMODES, 0.0},
                                            {0.0, 0.0, 1.0 / NMODES} };
 
-const double Lamb::MODE_MATRIX[NMODES][NMODES] =
+const double Simulation::MODE_MATRIX[NMODES][NMODES] =
 {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	{0, 1, -1, 0, 0, 0, 0, 1, 1, 1, 1, -1, -1, -1, -1},
@@ -296,7 +296,7 @@ const double Lamb::MODE_MATRIX[NMODES][NMODES] =
 	{0, 0, 0, 0, 0, 0, 0, 1, -1, -1, 1, -1, 1, 1, -1}
 };
 
-const double Lamb::MODE_MATRIX_INVERSE[NMODES][NMODES] =
+const double Simulation::MODE_MATRIX_INVERSE[NMODES][NMODES] =
 {
 	{2./9., 0, 0, 0, -1./3., 0, 0, -1./3., 0, -1./3., -2./9., 0, 0, 0, 0},
 	{1./9., 1./3., 0, 0, 1./3., 0, 0, -1./6., 0, -1./6., 1./18., 1./6., 0, 0, 0},

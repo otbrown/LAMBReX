@@ -28,7 +28,7 @@ int main (int argc, char * argv[])
   z_mean /= nz;
   for (i = 0; i < numel; ++i) rho[i] /= z_mean;
 
-  Lamb * lbrx = lambrexInit(argc, argv, nx, ny, nz, tau, tau, periodicity);
+  Simulation * lbrx = lambrexInit(argc, argv, nx, ny, nz, tau, tau, periodicity);
 
   // provide LAMBReX with initial density and velocity
   // density is copied so safe to free

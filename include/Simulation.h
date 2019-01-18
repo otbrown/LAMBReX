@@ -1,5 +1,5 @@
-#ifndef LAMB_H
-#define LAMB_H
+#ifndef SIMULATION_H
+#define SIMULATION_H
 
 #include "AMReX_Config.H"
 #include "AMReX_Box.H"
@@ -14,7 +14,7 @@
 #define NDIMS 3
 #define NMODES 15
 
-class Lamb {
+class Simulation {
 private:
   // physical dimensions of the outer domain
   const int NX;
@@ -55,7 +55,7 @@ private:
   void propagate();
 
 public:
-  Lamb(int const, int const, int const, double const, double const,
+  Simulation(int const, int const, int const, double const, double const,
     int (&)[NDIMS]);
 
   int getTimeStep() { return time_step; }

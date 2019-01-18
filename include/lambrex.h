@@ -1,9 +1,9 @@
 #ifndef LAMBREX_H
 #define LAMBREX_H
 
-#include "Lamb.h"
+#include "Simulation.h"
 
-Lamb * lambrexInit(int, char **, int, int, int, double, double, int (&)[NDIMS]);
-void lambrexFinalize(Lamb *);
+Simulation * lambrexInit(int, char **, int, int, int, double, double, int (&)[NDIMS]);
+void lambrexFinalize(Simulation *);
 
 #endif
