@@ -10,92 +10,97 @@ void Simulation::collide() {
   double stress[NMODES][NMODES];
   int a, b, m, p;
 
-  for (int i = 0; i < NX; ++i) {
-    pos.setVal(0, i);
-    for (int j = 0; j < NY; ++j) {
-      pos.setVal(1, j);
-      for (int k = 0; k < NZ; ++k) {
-        pos.setVal(2, k);
+  for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
+    amrex::FArrayBox& fab_dist_fn = dist_fn[mfi];
 
-        for (m = 0; m < NMODES; ++m) {
-          mode[m] = 0.0;
-          for (p = 0; p < NMODES; ++p) {
-            mode[m] += dist_fn(pos,p) * MODE_MATRIX[m][p];
-          }
-        }
+    // will need to replace NX/NY/NZ with local domain sizes
+    for (int k = 0; k < NZ; ++k) {
+      pos.setVal(2, k);
+      for (int j = 0; j < NY; ++j) {
+        pos.setVal(1, j);
+        for (int i = 0; i < NX; ++i) {
+          pos.setVal(0, i);
 
-        density(pos) = mode[0];
-
-        // no forcing is currently present in the model,
-        // so we disregard uDOTf for now
-        usq = 0.0;
-        for (a = 0; a < NDIMS; ++a) {
-          velocity(pos, a) = mode[a+1] / density(pos);
-          usq += velocity(pos, a) * velocity(pos, a);
-        }
-
-        stress[0][0] = mode[4];
-        stress[0][1] = mode[5];
-        stress[0][2] = mode[6];
-
-        stress[1][0] = mode[5];
-        stress[1][1] = mode[7];
-        stress[1][2] = mode[8];
-
-        stress[2][0] = mode[6];
-        stress[2][1] = mode[8];
-        stress[2][2] = mode[9];
-
-        // Form the trace
-        TrS = 0.0;
-        for (a = 0; a < NDIMS; ++a) {
-          TrS += stress[a][a];
-        }
-        // Form the traceless part
-        for (a = 0; a < NDIMS; ++a) {
-          stress[a][a] -= (TrS / NDIMS);
-        }
-
-        // Relax the trace
-        TrS -= OMEGA_B * (TrS - density(pos)*usq);
-        // Relax the traceless part
-        for (a = 0; a < NDIMS; ++a) {
-          for (b = 0; b < NDIMS; ++b) {
-            stress[a][b] -= OMEGA_S * (stress[a][b] - density(pos)
-                                    * ( velocity(pos,a) * velocity(pos,b)
-                                        - usq * DELTA[a][b]) );
-          }
-          stress[a][a] += (TrS / NDIMS);
-        }
-
-        // copy stress back into mode
-        mode[4] = stress[0][0];
-        mode[5] = stress[0][1];
-        mode[6] = stress[0][2];
-
-        mode[7] = stress[1][1];
-        mode[8] = stress[1][2];
-
-        mode[9] = stress[2][2];
-
-        // Ghosts are relaxed to zero immediately
-        mode[10] = 0.0;
-        mode[11] = 0.0;
-        mode[12] = 0.0;
-        mode[13] = 0.0;
-        mode[14] = 0.0;
-
-        // project back to the velocity basis
-        for (p = 0; p < NMODES; ++p) {
-          dist_fn(pos, p) = 0.0;
           for (m = 0; m < NMODES; ++m) {
-            dist_fn(pos, p) = mode[m] * MODE_MATRIX_INVERSE[p][m];
+            mode[m] = 0.0;
+            for (p = 0; p < NMODES; ++p) {
+              mode[m] += fab_dist_fn(pos,p) * MODE_MATRIX[m][p];
+            }
           }
-        }
 
-      } // k
-    } // j
-  } // i
+          density(pos) = mode[0];
+
+          // no forcing is currently present in the model,
+          // so we disregard uDOTf for now
+          usq = 0.0;
+          for (a = 0; a < NDIMS; ++a) {
+            velocity(pos, a) = mode[a+1] / density(pos);
+            usq += velocity(pos, a) * velocity(pos, a);
+          }
+
+          stress[0][0] = mode[4];
+          stress[0][1] = mode[5];
+          stress[0][2] = mode[6];
+
+          stress[1][0] = mode[5];
+          stress[1][1] = mode[7];
+          stress[1][2] = mode[8];
+
+          stress[2][0] = mode[6];
+          stress[2][1] = mode[8];
+          stress[2][2] = mode[9];
+
+          // Form the trace
+          TrS = 0.0;
+          for (a = 0; a < NDIMS; ++a) {
+            TrS += stress[a][a];
+          }
+          // Form the traceless part
+          for (a = 0; a < NDIMS; ++a) {
+            stress[a][a] -= (TrS / NDIMS);
+          }
+
+          // Relax the trace
+          TrS -= OMEGA_B * (TrS - density(pos)*usq);
+          // Relax the traceless part
+          for (a = 0; a < NDIMS; ++a) {
+            for (b = 0; b < NDIMS; ++b) {
+              stress[a][b] -= OMEGA_S * (stress[a][b] - density(pos)
+                                      * ( velocity(pos,a) * velocity(pos,b)
+                                          - usq * DELTA[a][b]) );
+            }
+            stress[a][a] += (TrS / NDIMS);
+          }
+
+          // copy stress back into mode
+          mode[4] = stress[0][0];
+          mode[5] = stress[0][1];
+          mode[6] = stress[0][2];
+
+          mode[7] = stress[1][1];
+          mode[8] = stress[1][2];
+
+          mode[9] = stress[2][2];
+
+          // Ghosts are relaxed to zero immediately
+          mode[10] = 0.0;
+          mode[11] = 0.0;
+          mode[12] = 0.0;
+          mode[13] = 0.0;
+          mode[14] = 0.0;
+
+          // project back to the velocity basis
+          for (p = 0; p < NMODES; ++p) {
+            fab_dist_fn(pos, p) = 0.0;
+            for (m = 0; m < NMODES; ++m) {
+              fab_dist_fn(pos, p) = mode[m] * MODE_MATRIX_INVERSE[p][m];
+            }
+          }
+
+        } // i
+      } // j
+    } // k
+  } // MFIter
 
   return;
 }
@@ -116,8 +121,9 @@ Simulation::Simulation(int const nx, int const ny, int const nz,
   phys_domain( {AMREX_D_DECL(0.0, 0.0, 0.0)},
                {AMREX_D_DECL( (double) nx-1, (double) ny-1, (double) nz-1 )} ),
   geometry(idx_domain, &phys_domain, COORD_SYS, periodicity),
-  density(idx_domain), velocity(idx_domain, NDIMS), force(idx_domain, NDIMS),
-  dist_fn(idx_domain, NMODES) {};
+  ba_domain(idx_domain), dm(ba_domain), density(idx_domain),
+  velocity(idx_domain, NDIMS), force(idx_domain, NDIMS),
+  dist_fn(ba_domain, dm, NMODES, HALO_DEPTH) {};
 
 void Simulation::setDensity(double const uniform_density) {
   // set density array to one value everywhere
@@ -171,74 +177,77 @@ void Simulation::calcEquilibriumDist() {
   double u[NDIMS], rho, rho_w[NDIMS];
   amrex::IntVect pos(0);
 
-  // similarly here is there a provided iterator that could be used?
-  // only use the triple nested for to generate position argument
-  for (int i = 0; i < NX; ++i) {
-    pos.setVal(0, i);
-    for (int j = 0; j < NY; ++j) {
-      pos.setVal(1, j);
-      for (int k = 0; k < NZ; ++k) {
-        pos.setVal(2, k);
+  for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
+    amrex::FArrayBox& fab_dist_fn = dist_fn[mfi];
 
-        // get density and velocity at this point in space
-        rho = density(pos);
-        u[0] = velocity(pos, 0);
-        u[1] = velocity(pos, 1);
-        u[2] = velocity(pos, 2);
+    // will need to replace NX/NY/NZ with local domain sizes
+    for (int k = 0; k < NZ; ++k) {
+      pos.setVal(2, k);
+      for (int j = 0; j < NY; ++j) {
+        pos.setVal(1, j);
+        for (int i = 0; i < NX; ++i) {
+          pos.setVal(0, i);
 
-        // calculate coefficients
-        rho_w[0] = rho * 2.0 / 9.0;
-        rho_w[1] = rho / 9.0;
-        rho_w[2] = rho / 72.0;
+          // get density and velocity at this point in space
+          rho = density(pos);
+          u[0] = velocity(pos, 0);
+          u[1] = velocity(pos, 1);
+          u[2] = velocity(pos, 2);
 
-        u2[0] = u[0]*u[0];
-        u2[1] = u[1]*u[1];
-        u2[2] = u[2]*u[2];
+          // calculate coefficients
+          rho_w[0] = rho * 2.0 / 9.0;
+          rho_w[1] = rho / 9.0;
+          rho_w[2] = rho / 72.0;
 
-        u_cs2[0] = u[0] / CS2;
-        u_cs2[1] = u[1] / CS2;
-        u_cs2[2] = u[2] / CS2;
+          u2[0] = u[0]*u[0];
+          u2[1] = u[1]*u[1];
+          u2[2] = u[2]*u[2];
 
-        u2_2cs4[0] = u2[0] / (2.0 * CS2 * CS2);
-        u2_2cs4[1] = u2[1] / (2.0 * CS2 * CS2);
-        u2_2cs4[2] = u2[2] / (2.0 * CS2 * CS2);
+          u_cs2[0] = u[0] / CS2;
+          u_cs2[1] = u[1] / CS2;
+          u_cs2[2] = u[2] / CS2;
 
-        uv_cs4 = u_cs2[0] * u_cs2[1];
-        vw_cs4 = u_cs2[1] * u_cs2[2];
-        uw_cs4 = u_cs2[0] * u_cs2[2];
+          u2_2cs4[0] = u2[0] / (2.0 * CS2 * CS2);
+          u2_2cs4[1] = u2[1] / (2.0 * CS2 * CS2);
+          u2_2cs4[2] = u2[2] / (2.0 * CS2 * CS2);
 
-        mod_sq = (u2[0] + u2[1] + u2[2]) / (2.0 * CS2);
-        mod_sq_2 = (u2[0] + u2[1] + u2[2]) * (1 - CS2) / (2.0 * CS2 * CS2);
+          uv_cs4 = u_cs2[0] * u_cs2[1];
+          vw_cs4 = u_cs2[1] * u_cs2[2];
+          uw_cs4 = u_cs2[0] * u_cs2[2];
 
-        // set distribution function
-        dist_fn(pos, 0) = rho_w[0] * (1.0 - mod_sq);
+          mod_sq = (u2[0] + u2[1] + u2[2]) / (2.0 * CS2);
+          mod_sq_2 = (u2[0] + u2[1] + u2[2]) * (1 - CS2) / (2.0 * CS2 * CS2);
 
-        dist_fn(pos, 1) = rho_w[1] * (1.0 - mod_sq + u_cs2[0] + u2_2cs4[0]);
-        dist_fn(pos, 2) = rho_w[1] * (1.0 - mod_sq - u_cs2[0] + u2_2cs4[0]);
-        dist_fn(pos, 3) = rho_w[1] * (1.0 - mod_sq + u_cs2[1] + u2_2cs4[1]);
-        dist_fn(pos, 4) = rho_w[1] * (1.0 - mod_sq - u_cs2[1] + u2_2cs4[1]);
-        dist_fn(pos, 5) = rho_w[1] * (1.0 - mod_sq + u_cs2[2] + u2_2cs4[2]);
-        dist_fn(pos, 6) = rho_w[1] * (1.0 - mod_sq - u_cs2[2] + u2_2cs4[2]);
+          // set distribution function
+          fab_dist_fn(pos, 0) = rho_w[0] * (1.0 - mod_sq);
 
-        dist_fn(pos, 7) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] + u_cs2[2]
-                                      + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
-        dist_fn(pos, 8) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] - u_cs2[2]
-                                      + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
-        dist_fn(pos, 9) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] + u_cs2[2]
-                                      - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
-        dist_fn(pos, 10) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] - u_cs2[2]
-                                       - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
-        dist_fn(pos, 11) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] + u_cs2[2]
-                                       - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
-        dist_fn(pos, 12) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] - u_cs2[2]
-                                       - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
-        dist_fn(pos, 13) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] + u_cs2[2]
-                                       + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
-        dist_fn(pos, 14) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] - u_cs2[2]
-                                       + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
-      }
-    }
-  }
+          fab_dist_fn(pos, 1) = rho_w[1] * (1.0 - mod_sq + u_cs2[0] + u2_2cs4[0]);
+          fab_dist_fn(pos, 2) = rho_w[1] * (1.0 - mod_sq - u_cs2[0] + u2_2cs4[0]);
+          fab_dist_fn(pos, 3) = rho_w[1] * (1.0 - mod_sq + u_cs2[1] + u2_2cs4[1]);
+          fab_dist_fn(pos, 4) = rho_w[1] * (1.0 - mod_sq - u_cs2[1] + u2_2cs4[1]);
+          fab_dist_fn(pos, 5) = rho_w[1] * (1.0 - mod_sq + u_cs2[2] + u2_2cs4[2]);
+          fab_dist_fn(pos, 6) = rho_w[1] * (1.0 - mod_sq - u_cs2[2] + u2_2cs4[2]);
+
+          fab_dist_fn(pos, 7) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] + u_cs2[2]
+                                        + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 8) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] - u_cs2[2]
+                                        + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 9) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] + u_cs2[2]
+                                        - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 10) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] - u_cs2[2]
+                                         - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 11) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] + u_cs2[2]
+                                         - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 12) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] - u_cs2[2]
+                                         - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 13) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] + u_cs2[2]
+                                         + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 14) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] - u_cs2[2]
+                                         + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
+        } // i
+      } // j
+    } // k
+  } // MultiFabIter
 
   return;
 }

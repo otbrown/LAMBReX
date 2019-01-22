@@ -8,6 +8,9 @@
 #include "AMReX_IndexType.H"
 #include "AMReX_Geometry.H"
 #include "AMReX_FArrayBox.H"
+#include "AMReX_BoxArray.H"
+#include "AMReX_DistributionMapping.H"
+#include "AMReX_MultiFab.H"
 
 // number of spatial dimensions and velocities are model dependent
 // and cannot be changed (for now)
@@ -25,7 +28,8 @@ private:
   const int PERIODICITY[NDIMS];
 
   // model parameters
-  const double CS2 = 1.0 / 3.0; // speed of sound squared
+  constexpr static double CS2 = 1.0 / 3.0; // speed of sound squared
+  constexpr static int HALO_DEPTH = 1;
   const double TAU_S; // shear
   const double TAU_B; // bulk
   const double OMEGA_S;
@@ -41,6 +45,8 @@ private:
   amrex::Box idx_domain;
   amrex::RealBox phys_domain;
   amrex::Geometry geometry;
+  amrex::BoxArray ba_domain;
+  amrex::DistributionMapping dm;
 
   // hydrodynamic variables (output arrays)
   amrex::FArrayBox density;
@@ -48,7 +54,7 @@ private:
   amrex::FArrayBox force;
 
   // distribution function (work array)
-  amrex::FArrayBox dist_fn;
+  amrex::MultiFab dist_fn;
 
   // member functions
   void collide();
