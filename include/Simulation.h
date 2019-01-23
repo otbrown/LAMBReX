@@ -57,6 +57,12 @@ private:
   amrex::MultiFab dist_fn;
 
   // member functions
+  int lindex(const int i, const int j, const int k, const int n) {
+    return (n * (NX+2*HALO_DEPTH) * (NY+2*HALO_DEPTH) * (NZ+2*HALO_DEPTH)
+            + k * (NX+2*HALO_DEPTH) * (NY+2*HALO_DEPTH) + j * (NX+2*HALO_DEPTH)
+            + i);
+  }
+  void updateBoundaries();
   void collide();
   void propagate();
 

@@ -3,6 +3,11 @@
 #include <array>
 #include "Simulation.h"
 
+void Simulation::updateBoundaries() {
+  dist_fn.FillBoundary(geometry.periodicity());
+  return;
+}
+
 void Simulation::collide() {
   amrex::IntVect pos(0);
   std::array<double, NMODES> mode;
@@ -249,12 +254,15 @@ void Simulation::calcEquilibriumDist() {
     } // k
   } // MultiFabIter
 
+  updateBoundaries();
+
   return;
 }
 
 int Simulation::iterate(int const nsteps) {
   for (int t = 0; t < nsteps; ++t){
     collide();
+    updateBoundaries();
     propagate();
     time_step++;
   }
