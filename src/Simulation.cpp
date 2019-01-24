@@ -3,6 +3,14 @@
 #include <array>
 #include "Simulation.h"
 
+void Simulation::swapElements(double * const arr, const int offset_a,
+                              const int offset_b) {
+  double tmp = arr[offset_a];
+  arr[offset_a] = arr[offset_b];
+  arr[offset_b] = tmp;
+  return;
+}
+
 void Simulation::updateBoundaries() {
   dist_fn.FillBoundary(geometry.periodicity());
   return;
@@ -111,6 +119,77 @@ void Simulation::collide() {
 }
 
 void Simulation::propagate() {
+  // Explanation from subgrid source
+  /* The propagation step of the algorithm.
+  *
+  * Copies (f[x][y][z][i] + R[i]) into f[x+dx][y+dy][z+dz][i]
+  *
+  * For each site, only want to access cells which are further
+  * along in memory, so use: (expecting 7 directions, as
+  * zero velocity doesn't move and we're swapping)
+  * [1,0,0] [0,1,0] [0,0,1] i.e. 1, 3, 5
+  * [1,1,1] [1,1,-1] [1,-1,1] [1,-1,-1] i.e. 7,8,9,10
+  *
+  * with, respectively:
+  * 2,4,6
+  * 14, 13, 12, 11
+  *
+  * We swap the value with the opposite direction velocity in
+  * the target Lattice site. By starting in the halo, we ensure
+  * all the real cells get fully updated. Note that the first
+  * row must be treated a little differently, as it has no
+  * neighbour in the [1,-1] position.
+  * After this is complete, we have the distribution functions
+  * updated, but with the fluid propagating AGAINST the velocity
+  * vector. So need to reorder the values once we've done the
+  * propagation step.
+  */
+  double * data;
+
+  for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
+    data = dist_fn[mfi].dataPtr();
+
+    // will need to replace NX/NY/NZ with local domain sizes, though ONLY in the
+    // loops -- conditionals still need to be evaluated on global position
+    for (int k = 1; k < NZ+1; ++k) {
+      for (int j = 1; j < NY+1; ++j) {
+        for (int i = 1; i < NX+1; ++i) {
+
+          // [1,0,0]
+          if (i <= NX) swapElements(data, lindex(i,j,k,1), lindex(i+1,j,k,2));
+          // [0,1,0]
+          if (j <= NY) swapElements(data, lindex(i,j,k,3), lindex(i,j+1,k,4));
+          // [0,0,1]
+          if (k <= NZ) swapElements(data, lindex(i,j,k,5), lindex(i,j,k+1,6));
+
+          // [1,1,1]
+          if (i <= NX && j <= NY && k <= NZ)
+            swapElements(data, lindex(i,j,k,7), lindex(i+1,j+1,k+1,14));
+          // [1,1,-1]
+          if (i <= NX && j <= NY && k > 0)
+            swapElements(data, lindex(i,j,k,8), lindex(i+1,j+1,k-1,13));
+          // [1,-1,1]
+          if (i <= NX && j > 0 && k <= NZ)
+            swapElements(data, lindex(i,j,k,9), lindex(i+1,j-1,k+1,12));
+          // [1,-1,-1]
+          if (i <= NX && j > 0 && k > 0)
+            swapElements(data, lindex(i,j,k,10), lindex(i+1,j-1,k-1,11));
+
+          // reorder
+          swapElements(data, lindex(i,j,k,1), lindex(i,j,k,2));
+          swapElements(data, lindex(i,j,k,3), lindex(i,j,k,4));
+          swapElements(data, lindex(i,j,k,5), lindex(i,j,k,6));
+
+          swapElements(data, lindex(i,j,k,7), lindex(i,j,k,14));
+          swapElements(data, lindex(i,j,k,8), lindex(i,j,k,13));
+          swapElements(data, lindex(i,j,k,9), lindex(i,j,k,12));
+          swapElements(data, lindex(i,j,k,10), lindex(i,j,k,11));
+        }
+      }
+    }
+
+  }
+
   return;
 }
 

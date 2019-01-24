@@ -62,6 +62,7 @@ private:
             + k * (NX+2*HALO_DEPTH) * (NY+2*HALO_DEPTH) + j * (NX+2*HALO_DEPTH)
             + i);
   }
+  void swapElements(double * const, const int, const int);
   void updateBoundaries();
   void collide();
   void propagate();
