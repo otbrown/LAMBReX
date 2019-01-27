@@ -1,6 +1,8 @@
-#include <cstdio>
+#include <iostream>
 #include <memory>
 #include "lambrex.h"
+
+void report();
 
 int main (int argc, char * argv[])
 {
@@ -15,7 +17,8 @@ int main (int argc, char * argv[])
   double z_mean;
 
   // create initial density array
-  double rho[numel] = {1.0};
+  double rho[numel] = {};
+  for (i = 0; i < numel; ++i) rho[i] = 1.0;
 
   // set enhanced density
   for (i = 0; i < nx; ++i) {
@@ -23,6 +26,7 @@ int main (int argc, char * argv[])
       rho[i*ny*nz + j*nz + nz/2] += amplitude;
     }
   }
+
   // renormalise
   z_mean = 0.0;
   for (k = 0; k < nz; ++k) z_mean += rho[((numel + ny * nz) / 2) + k];
@@ -37,14 +41,23 @@ int main (int argc, char * argv[])
     // provide LAMBReX with initial density and velocity
     // density is copied so safe to free
     lbrx->setDensity(rho);
-    printf("Density initialised.\n");
+    std::cout << "Density initialised." << std::endl;
     lbrx->setVelocity(0.0);
-    printf("Velocity initialised.\n");
+    std::cout << "Velocity initialised." << std::endl;
 
     lbrx->calcEquilibriumDist();
-    printf("Equilibrium distribution calculated.\n");
+    std::cout << "Equilibrium distribution calculated." << std::endl;
+
+    lbrx->iterate(100);
+    lbrx->calcHydroVars();
+
   }
   amrex::Finalize();
 
   return 0;
+}
+
+void report() {
+  // write to match subgrid example version
+  return;
 }
