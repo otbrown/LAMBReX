@@ -106,7 +106,7 @@ void Simulation::collide() {
           for (p = 0; p < NMODES; ++p) {
             fab_dist_fn(pos, p) = 0.0;
             for (m = 0; m < NMODES; ++m) {
-              fab_dist_fn(pos, p) = mode[m] * MODE_MATRIX_INVERSE[p][m];
+              fab_dist_fn(pos, p) += mode[m] * MODE_MATRIX_INVERSE[p][m];
             }
           }
 
@@ -219,6 +219,7 @@ void Simulation::setDensity(double const * const rho) {
   // could this be done by getting a position from a boxiter?
   amrex::IntVect pos(0);
   // set density to match provided array
+  // we assume provided array is indexed C-style
   for (int i = 0; i < NX; ++i) {
     pos.setVal(0, i);
     for (int j = 0; j < NY; ++j) {
@@ -334,6 +335,42 @@ void Simulation::calcEquilibriumDist() {
   } // MultiFabIter
 
   updateBoundaries();
+
+  return;
+}
+
+void Simulation::calcHydroVars() {
+  amrex::IntVect pos(0);
+  std::array<double, NMODES> mode;
+
+  for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
+    amrex::FArrayBox& fab_dist_fn = dist_fn[mfi];
+
+    for (int k = 0; k < NZ; ++k) {
+      pos.setVal(2, k);
+      for (int j = 0; j < NY; ++j) {
+        pos.setVal(1, j);
+        for (int i = 0; i < NX; ++i) {
+          pos.setVal(0, i);
+
+          // it seems like only the first 4 elements of mode are used, even with
+          // a force present (which there is not here...)
+          for (int m = 0; m < NMODES; ++m) {
+            mode[m] = 0.0;
+            for (int p = 0; p < NMODES; ++p) {
+              mode[m] += fab_dist_fn(pos, p) * MODE_MATRIX[m][p];
+            }
+          }
+
+          density(pos) = mode[0];
+          for (int a = 0; a < NDIMS; ++a) {
+            velocity(pos, a) = mode[a+1] / mode[0];
+          }
+
+        } // i
+      } // j
+    } // k
+  } // MFIter
 
   return;
 }

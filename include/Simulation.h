@@ -77,6 +77,7 @@ public:
   void setVelocity(double const);
   void setVelocity(double const * const);
   void calcEquilibriumDist();
+  void calcHydroVars();
 
   int iterate(int const);
 
