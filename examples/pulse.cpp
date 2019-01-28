@@ -2,7 +2,7 @@
 #include <memory>
 #include "lambrex.h"
 
-void report();
+void report(const Simulation&);
 
 int main (int argc, char * argv[])
 {
@@ -10,9 +10,9 @@ int main (int argc, char * argv[])
   const int ny = 10;
   const int nz = 50;
   const double tau = 0.5;
+  double amplitude = 0.01;
   int periodicity[3] = {1, 1, 1};
   const int numel = nx * ny * nz;
-  double amplitude = 0.01;
   int i, j, k;
   double z_mean;
 
@@ -23,7 +23,7 @@ int main (int argc, char * argv[])
   // set enhanced density
   for (i = 0; i < nx; ++i) {
     for (j = 0; j < ny; ++j) {
-      rho[i*ny*nz + j*nz + nz/2] += amplitude;
+      rho[i*ny*nz + j*nz + nz/2 - 1] += amplitude;
     }
   }
 
@@ -48,16 +48,29 @@ int main (int argc, char * argv[])
     lbrx->calcEquilibriumDist();
     std::cout << "Equilibrium distribution calculated." << std::endl;
 
+    report(*lbrx);
     lbrx->iterate(100);
     lbrx->calcHydroVars();
-
+    report(*lbrx);
+    lbrx->iterate(100);
+    lbrx->calcHydroVars();
+    report(*lbrx);
   }
   amrex::Finalize();
 
   return 0;
 }
 
-void report() {
-  // write to match subgrid example version
+void report(const Simulation& sim) {
+  const std::array<int,NDIMS> DIMS = sim.getDims();
+  std::cout.precision(6);
+
+  std::cout << "Time step: " << sim.getTimeStep() << std::endl;
+  std::cout << "Density:\n[ ";
+  for (int k = 0; k < DIMS[2]; ++k) {
+    std::cout << sim.getDensity(DIMS[0]/2, DIMS[1]/2, k) << " ";
+  }
+  std::cout << "]" << std::endl;
+
   return;
 }
