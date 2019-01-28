@@ -57,7 +57,7 @@ private:
   amrex::MultiFab dist_fn;
 
   // member functions
-  int lindex(const int i, const int j, const int k, const int n) {
+  int lindex(const int i, const int j, const int k, const int n) const {
     return (n * (NX+2*HALO_DEPTH) * (NY+2*HALO_DEPTH) * (NZ+2*HALO_DEPTH)
             + k * (NX+2*HALO_DEPTH) * (NY+2*HALO_DEPTH) + j * (NX+2*HALO_DEPTH)
             + i);
@@ -71,7 +71,9 @@ public:
   Simulation(int const, int const, int const, double const, double const,
     int (&)[NDIMS]);
 
-  int getTimeStep() { return time_step; }
+  int getTimeStep() const { return time_step; }
+  std::array<int,NDIMS> getDims() const {return std::array<int,NDIMS>{NX,NY,NZ};}
+  double getDensity(const int, const int, const int) const;
   void setDensity(double const);
   void setDensity(double const * const);
   void setVelocity(double const);
@@ -81,7 +83,7 @@ public:
 
   int iterate(int const);
 
-  void printDensity();
+  void printDensity() const;
 };
 
 #endif
