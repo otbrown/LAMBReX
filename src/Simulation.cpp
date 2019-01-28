@@ -151,9 +151,10 @@ void Simulation::propagate() {
 
     // will need to replace NX/NY/NZ with local domain sizes, though ONLY in the
     // loops -- conditionals still need to be evaluated on global position
-    for (int k = 1; k < NZ+1; ++k) {
-      for (int j = 1; j < NY+1; ++j) {
-        for (int i = 1; i < NX+1; ++i) {
+    // this looping is bad for FAB, but will need to reorder swaps too...
+    for (int i = 0; i < NX+2*HALO_DEPTH; ++i) {
+      for (int j = 0; j < NY+2*HALO_DEPTH; ++j) {
+        for (int k = 0; k < NZ+2*HALO_DEPTH; ++k) {
 
           // [1,0,0]
           if (i <= NX) swapElements(data, lindex(i,j,k,1), lindex(i+1,j,k,2));
@@ -208,6 +209,11 @@ Simulation::Simulation(int const nx, int const ny, int const nz,
   ba_domain(idx_domain), dm(ba_domain), density(idx_domain),
   velocity(idx_domain, NDIMS), force(idx_domain, NDIMS),
   dist_fn(ba_domain, dm, NMODES, HALO_DEPTH) {};
+
+double Simulation::getDensity(const int i, const int j, const int k) const {
+  amrex::IntVect pos(i,j,k);
+  return density(pos);
+}
 
 void Simulation::setDensity(double const uniform_density) {
   // set density array to one value everywhere
@@ -386,7 +392,7 @@ int Simulation::iterate(int const nsteps) {
   return time_step;
 }
 
-void Simulation::printDensity() {
+void Simulation::printDensity() const {
   amrex::IntVect pos(0);
 
   for (int k = 0; k < NZ; ++k) {
