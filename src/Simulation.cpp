@@ -207,8 +207,7 @@ Simulation::Simulation(int const nx, int const ny, int const nz,
                {AMREX_D_DECL( (double) nx-1, (double) ny-1, (double) nz-1 )} ),
   geometry(idx_domain, &phys_domain, COORD_SYS, periodicity),
   ba_domain(idx_domain), dm(ba_domain), density(idx_domain),
-  velocity(idx_domain, NDIMS), force(idx_domain, NDIMS),
-  dist_fn(ba_domain, dm, NMODES, HALO_DEPTH) {};
+  velocity(idx_domain, NDIMS), dist_fn(ba_domain, dm, NMODES, HALO_DEPTH) {};
 
 double Simulation::getDensity(const int i, const int j, const int k) const {
   amrex::IntVect pos(i,j,k);

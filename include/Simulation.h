@@ -51,7 +51,6 @@ private:
   // hydrodynamic variables (output arrays)
   amrex::FArrayBox density;
   amrex::FArrayBox velocity;
-  amrex::FArrayBox force;
 
   // distribution function (work array)
   amrex::MultiFab dist_fn;
