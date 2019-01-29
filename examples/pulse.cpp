@@ -35,26 +35,25 @@ int main (int argc, char * argv[])
 
   amrex::Initialize(argc, argv, false);
   {
-    const std::unique_ptr<Simulation> lbrx =
-      std::make_unique<Simulation>(nx, ny, nz, tau, tau, periodicity);
+    Simulation lbrx(nx, ny, nz, tau, tau, periodicity);
 
     // provide LAMBReX with initial density and velocity
     // density is copied so safe to free
-    lbrx->setDensity(rho);
+    lbrx.setDensity(rho);
     std::cout << "Density initialised." << std::endl;
-    lbrx->setVelocity(0.0);
+    lbrx.setVelocity(0.0);
     std::cout << "Velocity initialised." << std::endl;
 
-    lbrx->calcEquilibriumDist();
+    lbrx.calcEquilibriumDist();
     std::cout << "Equilibrium distribution calculated." << std::endl;
 
-    report(*lbrx);
-    lbrx->iterate(100);
-    lbrx->calcHydroVars();
-    report(*lbrx);
-    lbrx->iterate(100);
-    lbrx->calcHydroVars();
-    report(*lbrx);
+    report(lbrx);
+    lbrx.iterate(100);
+    lbrx.calcHydroVars();
+    report(lbrx);
+    lbrx.iterate(100);
+    lbrx.calcHydroVars();
+    report(lbrx);
   }
   amrex::Finalize();
 
