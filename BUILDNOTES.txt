@@ -1,4 +1,4 @@
 # AMReX build notes
-./configure --prefix /PATH/TO/LAMBReX/libamrex --dim 3 --with-mpi no --comp gnu  --enable-fortran-api no
+./configure --prefix /PATH/TO/LAMBReX/libamrex --dim 3 --with-mpi no --with-omp no --comp gnu --enable-fortran-api no
 make
 make install
