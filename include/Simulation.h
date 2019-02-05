@@ -49,8 +49,8 @@ private:
   amrex::DistributionMapping dm;
 
   // hydrodynamic variables (output arrays)
-  amrex::FArrayBox density;
-  amrex::FArrayBox velocity;
+  amrex::MultiFab density;
+  amrex::MultiFab velocity;
 
   // distribution function (work array)
   amrex::MultiFab dist_fn;
@@ -73,10 +73,10 @@ public:
   int getTimeStep() const { return time_step; }
   std::array<int,NDIMS> getDims() const {return std::array<int,NDIMS>{NX,NY,NZ};}
   double getDensity(const int, const int, const int) const;
-  void setDensity(double const);
-  void setDensity(double const * const);
-  void setVelocity(double const);
-  void setVelocity(double const * const);
+  void setDensity(const double);
+  void setDensity(const int, const int, const int, const double);
+  void setVelocity(const double);
+  void setVelocity(const int, const int, const int, const double);
   void calcEquilibriumDist();
   void calcHydroVars();
 

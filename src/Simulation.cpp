@@ -25,6 +25,8 @@ void Simulation::collide() {
 
   for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
     amrex::FArrayBox& fab_dist_fn = dist_fn[mfi];
+    amrex::FArrayBox& fab_density = density[mfi];
+    amrex::FArrayBox& fab_velocity = velocity[mfi];
 
     // will need to replace NX/NY/NZ with local domain sizes
     for (int k = 0; k < NZ; ++k) {
@@ -41,14 +43,14 @@ void Simulation::collide() {
             }
           }
 
-          density(pos) = mode[0];
+          fab_density(pos) = mode[0];
 
           // no forcing is currently present in the model,
           // so we disregard uDOTf for now
           usq = 0.0;
           for (a = 0; a < NDIMS; ++a) {
-            velocity(pos, a) = mode[a+1] / density(pos);
-            usq += velocity(pos, a) * velocity(pos, a);
+            fab_velocity(pos, a) = mode[a+1] / fab_density(pos);
+            usq += fab_velocity(pos, a) * fab_velocity(pos, a);
           }
 
           stress[0][0] = mode[4];
@@ -74,12 +76,13 @@ void Simulation::collide() {
           }
 
           // Relax the trace
-          TrS -= OMEGA_B * (TrS - density(pos)*usq);
+          TrS -= OMEGA_B * (TrS - fab_density(pos)*usq);
           // Relax the traceless part
           for (a = 0; a < NDIMS; ++a) {
             for (b = 0; b < NDIMS; ++b) {
-              stress[a][b] -= OMEGA_S * (stress[a][b] - density(pos)
-                                      * ( velocity(pos,a) * velocity(pos,b)
+              stress[a][b] -= OMEGA_S * (stress[a][b] - fab_density(pos)
+                                      * ( fab_velocity(pos,a)
+                                          * fab_velocity(pos,b)
                                           - usq * DELTA[a][b]) );
             }
             stress[a][a] += (TrS / NDIMS);
@@ -206,34 +209,29 @@ Simulation::Simulation(int const nx, int const ny, int const nz,
   phys_domain( {AMREX_D_DECL(0.0, 0.0, 0.0)},
                {AMREX_D_DECL( (double) nx-1, (double) ny-1, (double) nz-1 )} ),
   geometry(idx_domain, &phys_domain, COORD_SYS, periodicity),
-  ba_domain(idx_domain), dm(ba_domain), density(idx_domain),
-  velocity(idx_domain, NDIMS), dist_fn(ba_domain, dm, NMODES, HALO_DEPTH) {};
+  ba_domain(idx_domain), dm(ba_domain), density(ba_domain, dm, 1, 0),
+  velocity(ba_domain, dm, NDIMS, 0), dist_fn(ba_domain, dm, NMODES, HALO_DEPTH)
+  {};
 
 double Simulation::getDensity(const int i, const int j, const int k) const {
   amrex::IntVect pos(i,j,k);
-  return density(pos);
+  for (amrex::MFIter mfi(density); mfi.isValid(); ++mfi) {
+    if (density[mfi].box().contains(pos)) return density[mfi](pos);
+  }
+  return -1.0;
 }
 
-void Simulation::setDensity(double const uniform_density) {
+void Simulation::setDensity(const double uniform_density) {
   // set density array to one value everywhere
   density.setVal(uniform_density);
   return;
 }
 
-void Simulation::setDensity(double const * const rho) {
-  // could this be done by getting a position from a boxiter?
-  amrex::IntVect pos(0);
-  // set density to match provided array
-  // we assume provided array is indexed C-style
-  for (int i = 0; i < NX; ++i) {
-    pos.setVal(0, i);
-    for (int j = 0; j < NY; ++j) {
-      pos.setVal(1, j);
-      for (int k = 0; k < NZ; ++k) {
-        pos.setVal(2, k);
-        density(pos) = rho[i*NY*NZ + j*NZ + k];
-      }
-    }
+void Simulation::setDensity(const int i, const int j, const int k,
+                            const double point_density) {
+  amrex::IntVect pos(i,j,k);
+  for (amrex::MFIter mfi(density); mfi.isValid(); ++mfi) {
+    if (density[mfi].box().contains(pos)) density[mfi](pos) = point_density;
   }
   return;
 }
@@ -244,20 +242,11 @@ void Simulation::setVelocity(double const uniform_velocity) {
   return;
 }
 
-void Simulation::setVelocity(double const * const u) {
-  amrex::IntVect pos(0);
-  // set velocity to match provided array
-  for (int i = 0; i < NX; ++i) {
-    pos.setVal(0, i);
-    for (int j = 0; j < NY; ++j) {
-      pos.setVal(1, j);
-      for (int k = 0; k < NZ; ++k) {
-        pos.setVal(2, k);
-        for (int n = 0; n < NDIMS; ++n) {
-          velocity(pos, n) = u[i*NY*NZ*NDIMS + j*NZ*NDIMS + k*NDIMS + n];
-        }
-      }
-    }
+void Simulation::setVelocity(const int i, const int j, const int k,
+                             const double point_velocity) {
+  amrex::IntVect pos(i,j,k);
+  for (amrex::MFIter mfi(velocity); mfi.isValid(); ++mfi) {
+    if (velocity[mfi].box().contains(pos)) velocity[mfi](pos) = point_velocity;
   }
   return;
 }
@@ -269,6 +258,8 @@ void Simulation::calcEquilibriumDist() {
 
   for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
     amrex::FArrayBox& fab_dist_fn = dist_fn[mfi];
+    amrex::FArrayBox& fab_density = density[mfi];
+    amrex::FArrayBox& fab_velocity = velocity[mfi];
 
     // will need to replace NX/NY/NZ with local domain sizes
     for (int k = 0; k < NZ; ++k) {
@@ -279,10 +270,10 @@ void Simulation::calcEquilibriumDist() {
           pos.setVal(0, i);
 
           // get density and velocity at this point in space
-          rho = density(pos);
-          u[0] = velocity(pos, 0);
-          u[1] = velocity(pos, 1);
-          u[2] = velocity(pos, 2);
+          rho = fab_density(pos);
+          u[0] = fab_velocity(pos, 0);
+          u[1] = fab_velocity(pos, 1);
+          u[2] = fab_velocity(pos, 2);
 
           // calculate coefficients
           rho_w[0] = rho * 2.0 / 9.0;
@@ -350,6 +341,8 @@ void Simulation::calcHydroVars() {
 
   for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
     amrex::FArrayBox& fab_dist_fn = dist_fn[mfi];
+    amrex::FArrayBox& fab_density = density[mfi];
+    amrex::FArrayBox& fab_velocity = velocity[mfi];
 
     for (int k = 0; k < NZ; ++k) {
       pos.setVal(2, k);
@@ -367,9 +360,9 @@ void Simulation::calcHydroVars() {
             }
           }
 
-          density(pos) = mode[0];
+          fab_density(pos) = mode[0];
           for (int a = 0; a < NDIMS; ++a) {
-            velocity(pos, a) = mode[a+1] / mode[0];
+            fab_velocity(pos, a) = mode[a+1] / mode[0];
           }
 
         } // i
@@ -392,19 +385,22 @@ int Simulation::iterate(int const nsteps) {
 }
 
 void Simulation::printDensity() const {
-  amrex::IntVect pos(0);
+  for (amrex::MFIter mfi(density); mfi.isValid(); ++mfi) {
+    const amrex::FArrayBox& fab_density = density[mfi];
+    amrex::IntVect pos(0);
 
-  for (int k = 0; k < NZ; ++k) {
-    pos.setVal(2, k);
-    for (int j = 0; j < NY; ++j) {
-      pos.setVal(1, j);
-      for (int i = 0; i < NX; ++i) {
-        pos.setVal(0, i);
-        printf("%g ", density(pos));
+    for (int k = 0; k < NZ; ++k) {
+      pos.setVal(2, k);
+      for (int j = 0; j < NY; ++j) {
+        pos.setVal(1, j);
+        for (int i = 0; i < NX; ++i) {
+          pos.setVal(0, i);
+          printf("%g ", fab_density(pos));
+        }
+        printf("\n");
       }
       printf("\n");
     }
-    printf("\n");
   }
 
   return;
