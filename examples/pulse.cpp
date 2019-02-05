@@ -36,10 +36,15 @@ int main (int argc, char * argv[])
   amrex::Initialize(argc, argv, false);
   {
     Simulation lbrx(nx, ny, nz, tau, tau, periodicity);
-
     // provide LAMBReX with initial density and velocity
     // density is copied so safe to free
-    lbrx.setDensity(rho);
+    for (i = 0; i < nx; ++i) {
+      for (j = 0; j < ny; ++j) {
+        for (k = 0; k < nz; ++k) {
+          lbrx.setDensity(i, j, k, rho[i*ny*nz + j*nz + k]);
+        }
+      }
+    }
     std::cout << "Density initialised." << std::endl;
     lbrx.setVelocity(0.0);
     std::cout << "Velocity initialised." << std::endl;
