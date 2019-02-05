@@ -145,35 +145,35 @@ void Simulation::propagate() {
   * propagation step.
   */
   double * data;
+  const int * dims;
 
   for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
     data = dist_fn[mfi].dataPtr();
+    dims = dist_fn[mfi].length();
 
-    // will need to replace NX/NY/NZ with local domain sizes, though ONLY in the
-    // loops -- conditionals still need to be evaluated on global position
     // this looping is bad for FAB, but will need to reorder swaps too...
-    for (int i = 0; i < NX+2*HALO_DEPTH; ++i) {
-      for (int j = 0; j < NY+2*HALO_DEPTH; ++j) {
-        for (int k = 0; k < NZ+2*HALO_DEPTH; ++k) {
+    for (int i = 0; i < dims[0]; ++i) {
+      for (int j = 0; j < dims[1]; ++j) {
+        for (int k = 0; k < dims[2]; ++k) {
 
           // [1,0,0]
-          if (i <= NX) swapElements(data, lindex(i,j,k,1), lindex(i+1,j,k,2));
+          if (i < dims[0]-1) swapElements(data, lindex(i,j,k,1), lindex(i+1,j,k,2));
           // [0,1,0]
-          if (j <= NY) swapElements(data, lindex(i,j,k,3), lindex(i,j+1,k,4));
+          if (j < dims[1]-1) swapElements(data, lindex(i,j,k,3), lindex(i,j+1,k,4));
           // [0,0,1]
-          if (k <= NZ) swapElements(data, lindex(i,j,k,5), lindex(i,j,k+1,6));
+          if (k < dims[2]-1) swapElements(data, lindex(i,j,k,5), lindex(i,j,k+1,6));
 
           // [1,1,1]
-          if (i <= NX && j <= NY && k <= NZ)
+          if (i < dims[0]-1 && j < dims[1]-1 && k < dims[2]-1)
             swapElements(data, lindex(i,j,k,7), lindex(i+1,j+1,k+1,14));
           // [1,1,-1]
-          if (i <= NX && j <= NY && k > 0)
+          if (i < dims[0]-1 && j < dims[1]-1 && k > 0)
             swapElements(data, lindex(i,j,k,8), lindex(i+1,j+1,k-1,13));
           // [1,-1,1]
-          if (i <= NX && j > 0 && k <= NZ)
+          if (i < dims[0]-1 && j > 0 && k < dims[2]-1)
             swapElements(data, lindex(i,j,k,9), lindex(i+1,j-1,k+1,12));
           // [1,-1,-1]
-          if (i <= NX && j > 0 && k > 0)
+          if (i < dims[0]-1 && j > 0 && k > 0)
             swapElements(data, lindex(i,j,k,10), lindex(i+1,j-1,k-1,11));
 
           // reorder
