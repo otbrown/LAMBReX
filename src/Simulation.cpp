@@ -160,34 +160,37 @@ void Simulation::propagate() {
         for (int k = 0; k < dims[2]; ++k) {
 
           // [1,0,0]
-          if (i < dims[0]-1) swapElements(data, lindex(i,j,k,1), lindex(i+1,j,k,2));
+          if (i < dims[0]-1)
+          swapElements(data, lindex(i,j,k,1,dims), lindex(i+1,j,k,2,dims));
           // [0,1,0]
-          if (j < dims[1]-1) swapElements(data, lindex(i,j,k,3), lindex(i,j+1,k,4));
+          if (j < dims[1]-1)
+          swapElements(data, lindex(i,j,k,3,dims), lindex(i,j+1,k,4,dims));
           // [0,0,1]
-          if (k < dims[2]-1) swapElements(data, lindex(i,j,k,5), lindex(i,j,k+1,6));
+          if (k < dims[2]-1)
+          swapElements(data, lindex(i,j,k,5,dims), lindex(i,j,k+1,6,dims));
 
           // [1,1,1]
           if (i < dims[0]-1 && j < dims[1]-1 && k < dims[2]-1)
-            swapElements(data, lindex(i,j,k,7), lindex(i+1,j+1,k+1,14));
+          swapElements(data, lindex(i,j,k,7,dims), lindex(i+1,j+1,k+1,14,dims));
           // [1,1,-1]
           if (i < dims[0]-1 && j < dims[1]-1 && k > 0)
-            swapElements(data, lindex(i,j,k,8), lindex(i+1,j+1,k-1,13));
+          swapElements(data, lindex(i,j,k,8,dims), lindex(i+1,j+1,k-1,13,dims));
           // [1,-1,1]
           if (i < dims[0]-1 && j > 0 && k < dims[2]-1)
-            swapElements(data, lindex(i,j,k,9), lindex(i+1,j-1,k+1,12));
+          swapElements(data, lindex(i,j,k,9,dims), lindex(i+1,j-1,k+1,12,dims));
           // [1,-1,-1]
           if (i < dims[0]-1 && j > 0 && k > 0)
-            swapElements(data, lindex(i,j,k,10), lindex(i+1,j-1,k-1,11));
+          swapElements(data, lindex(i,j,k,10,dims), lindex(i+1,j-1,k-1,11,dims));
 
           // reorder
-          swapElements(data, lindex(i,j,k,1), lindex(i,j,k,2));
-          swapElements(data, lindex(i,j,k,3), lindex(i,j,k,4));
-          swapElements(data, lindex(i,j,k,5), lindex(i,j,k,6));
+          swapElements(data, lindex(i,j,k,1,dims), lindex(i,j,k,2,dims));
+          swapElements(data, lindex(i,j,k,3,dims), lindex(i,j,k,4,dims));
+          swapElements(data, lindex(i,j,k,5,dims), lindex(i,j,k,6,dims));
 
-          swapElements(data, lindex(i,j,k,7), lindex(i,j,k,14));
-          swapElements(data, lindex(i,j,k,8), lindex(i,j,k,13));
-          swapElements(data, lindex(i,j,k,9), lindex(i,j,k,12));
-          swapElements(data, lindex(i,j,k,10), lindex(i,j,k,11));
+          swapElements(data, lindex(i,j,k,7,dims), lindex(i,j,k,14,dims));
+          swapElements(data, lindex(i,j,k,8,dims), lindex(i,j,k,13,dims));
+          swapElements(data, lindex(i,j,k,9,dims), lindex(i,j,k,12,dims));
+          swapElements(data, lindex(i,j,k,10,dims), lindex(i,j,k,11,dims));
         }
       }
     }

@@ -56,10 +56,10 @@ private:
   amrex::MultiFab dist_fn;
 
   // member functions
-  int lindex(const int i, const int j, const int k, const int n) const {
-    return (n * (NX+2*HALO_DEPTH) * (NY+2*HALO_DEPTH) * (NZ+2*HALO_DEPTH)
-            + k * (NX+2*HALO_DEPTH) * (NY+2*HALO_DEPTH) + j * (NX+2*HALO_DEPTH)
-            + i);
+  int lindex(const int i, const int j, const int k, const int n,
+             const int * dims) const {
+    return (n * dims[0] * dims[1] * dims[2] + k * dims[0] * dims[1]
+            + j * dims[0] + i);
   }
   void swapElements(double * const, const int, const int);
   void updateBoundaries();
