@@ -33,4 +33,6 @@
 
 # Project Ignores
 .gcc-flags.json
-libamrex
+libamrex/*
+build/*
+bins/*
