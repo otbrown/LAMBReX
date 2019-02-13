@@ -7,6 +7,7 @@ target_compile_options(lambrex
                           # MSVC warnings
                             $<$<CXX_COMPILER_ID:MSVC>:/W4>
                        )
+target_compile_definitions(lambrex PRIVATE AMREX_SPACEDIM=${DIM})
 target_include_directories(lambrex
                             PUBLIC
                               ${CMAKE_SOURCE_DIR}/libamrex/include

@@ -10,5 +10,8 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "${default_build_type}")
 endif()
 
+# we could get this from user, but for now hardcode as MUST be 3
+set(DIM "3")
+
 add_subdirectory(src)
 add_subdirectory(examples)

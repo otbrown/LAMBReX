@@ -7,6 +7,7 @@ target_compile_options(pulse
                           # MSVC warnings
                             $<$<CXX_COMPILER_ID:MSVC>:/W4>
                       )
+target_compile_definitions(pulse PRIVATE AMREX_SPACEDIM=${DIM})
 target_include_directories(pulse
                             PRIVATE
                               ${CMAKE_SOURCE_DIR}/libamrex/include
