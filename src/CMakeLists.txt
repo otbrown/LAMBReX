@@ -1,4 +1,4 @@
-add_library(lambrex STATIC Simulation.cpp ${CMAKE_SOURCE_DIR}/include/Simulation.h)
+add_library(lambrex STATIC Simulation.cpp Simulation.h)
 target_compile_features(lambrex PUBLIC cxx_std_11)
 target_compile_options(lambrex
                         PRIVATE

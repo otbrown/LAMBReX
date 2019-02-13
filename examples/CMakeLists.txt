@@ -12,6 +12,7 @@ target_include_directories(pulse
                             PRIVATE
                               ${CMAKE_SOURCE_DIR}/libamrex/include
                               ${CMAKE_SOURCE_DIR}/include
+                              ${CMAKE_SOURCE_DIR}/src
                           )
 target_link_directories(pulse
                          PRIVATE
