@@ -10,6 +10,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "${default_build_type}")
 endif()
 
+# AMReX do not provide FindAMReX.cmake (yet)
+set(AMReX_DIR "${CMAKE_SOURCE_DIR}/libamrex/lib/cmake/AMReX")
+find_package(AMReX 19.02 REQUIRED)
+
 # we could get this from user, but for now hardcode as MUST be 3
 set(DIM "3")
 

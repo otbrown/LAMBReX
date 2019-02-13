@@ -16,10 +16,10 @@ target_include_directories(pulse
                           )
 target_link_directories(pulse
                          PRIVATE
-                          ${CMAKE_SOURCE_DIR}/libamrex/lib
+                          #${CMAKE_SOURCE_DIR}/libamrex/lib
                           ${CMAKE_SOURCE_DIR}/liblambrex
                        )
-target_link_libraries(pulse PRIVATE lambrex amrex gfortran)
+target_link_libraries(pulse PRIVATE lambrex AMReX::amrex gfortran)
 set_target_properties(pulse PROPERTIES
                       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bins
                       )

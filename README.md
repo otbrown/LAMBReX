@@ -4,7 +4,7 @@ Lattice Boltzmann code built on AMReX
 ## Build Instructions
 
 ### AMReX
-**Important**: The library that AMReX builds with GNU Make is subtly different from the one that it builds with cmake. LAMBReX now supports only the cmake version.
+**Important**: The library that AMReX builds with GNU Make is subtly different from the one that it builds with cmake. LAMBReX now supports only the cmake version. Additionally AMReX is updated *regularly*, for LAMBReX is attempting to move with it, so minimum version 19.02 is `REQUIRED`.
 
 To build the static AMReX library with cmake in way that is compatible with the current version of LAMBReX, please follow the commands given in BUILDNOTES.txt.
 
