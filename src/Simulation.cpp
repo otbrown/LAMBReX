@@ -148,7 +148,7 @@ void Simulation::propagate() {
   * propagation step.
   */
   double * data;
-  const int * dims;
+  amrex::IntVect dims(0);
 
   for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
     data = dist_fn[mfi].dataPtr();

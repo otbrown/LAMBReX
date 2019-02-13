@@ -1,7 +1,6 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include "AMReX_Config.H"
 #include "AMReX_Box.H"
 #include "AMReX_RealBox.H"
 #include "AMReX_IntVect.H"
@@ -57,7 +56,7 @@ private:
 
   // member functions
   int lindex(const int i, const int j, const int k, const int n,
-             const int * dims) const {
+             const amrex::IntVect dims) const {
     return (n * dims[0] * dims[1] * dims[2] + k * dims[0] * dims[1]
             + j * dims[0] + i);
   }
