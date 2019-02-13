@@ -1,3 +1,4 @@
+#!/bin/bash
 # AMReX Build Notes
 # you could run this as a bash script from the amrex home directory
 # only the INSTALL_DIR needs to be updated
