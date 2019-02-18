@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(LAMBReX VERSION 0.1.0
-                DESCRIPTION "Lattice Boltzmann code built on AMReX"
-                LANGUAGES CXX)
+project(
+  LAMBReX VERSION 0.1.0
+  DESCRIPTION "Lattice Boltzmann code built on AMReX"
+  LANGUAGES CXX
+)
 
 set(default_build_type "Release")
 if(NOT CMAKE_BUILD_TYPE)
@@ -19,3 +21,12 @@ set(DIM "3")
 
 add_subdirectory(src)
 add_subdirectory(examples)
+
+# testing setup
+enable_testing()
+
+add_test(
+  NAME "pulse_diff"
+  COMMAND ${CMAKE_COMMAND} -E compare_files pulse.out blessed_pulse.out
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/bins
+)
