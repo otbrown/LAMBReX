@@ -16,14 +16,19 @@ endif()
 set(AMReX_DIR "${CMAKE_SOURCE_DIR}/libamrex/lib/cmake/AMReX")
 find_package(AMReX 19.02 REQUIRED)
 
+# Catch2 Test Framework
+find_package(Catch2 REQUIRED)
+
 # we could get this from user, but for now hardcode as MUST be 3
 set(DIM "3")
 
-add_subdirectory(src)
-add_subdirectory(examples)
-
 # testing setup
 enable_testing()
+include(CTest)
+include(Catch)
+
+add_subdirectory(src)
+add_subdirectory(examples)
 
 add_test(
   NAME "pulse_diff"
