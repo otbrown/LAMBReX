@@ -1,26 +1,14 @@
-add_library(lambrex STATIC Simulation.cpp Simulation.h)
+add_library(lambrex STATIC Simulation.cpp)
 
 target_compile_features(lambrex PUBLIC cxx_std_11)
 
-target_compile_options(
-  lambrex
-  PRIVATE
-    # clang/GCC warnings
-    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall>
-    # MSVC warnings
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-)
-
-target_compile_definitions(lambrex PRIVATE AMREX_SPACEDIM=${DIM})
-
-target_include_directories(
-  lambrex
-  PUBLIC
-    ${CMAKE_SOURCE_DIR}/libamrex/include
-    ${CMAKE_SOURCE_DIR}/include
-)
-
-set_target_properties(
-  lambrex
-  PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/liblambrex
-)
+# clang/GCC warnings
+target_compile_options(lambrex
+  PRIVATE $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall>
+  )
+target_include_directories(lambrex
+  PUBLIC ${CMAKE_SOURCE_DIR}/include
+  )
+target_link_libraries(lambrex
+  PUBLIC AMReX::amrex gfortran
+  )
