@@ -1,5 +1,4 @@
 #include <iostream>
-#include <memory>
 #include "lambrex.h"
 
 void report(const Simulation&);
