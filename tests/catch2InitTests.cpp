@@ -1,6 +1,5 @@
 #include <catch2/catch.hpp>
 #include <array>
-#include <cstdio>
 #include "lambrex.h"
 
 TEST_CASE("Single Value Initialisation", "[initialisation]")
