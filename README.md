@@ -4,12 +4,15 @@ Lattice Boltzmann code built on AMReX
 ## Build Instructions
 
 ### LAMBReX
-From the home directory create a build directory and cd to it -- for example `mkdir build` followed by `cd build`. Then simply run `cmake ../` followed by `make`. `liblambrex.a` can be found in `${LAMBReX_HOME}/liblambrex`, the binary for the example calculation can be found in `${LAMBREX_HOME}/bins`.
+From the home directory create a build directory and cd to it -- for example `mkdir build` followed by `cd build`. Then simply run `conan install ..`, `cmake ..`, and `make`. `liblambrex.a` can be found in `build/lib`, the binaries for the example calculation and tests can be found in `build/bin`.
 
 ### Dependencies
 
+#### Conan
+[Conan](https://conan.io/) is a C/C++ package manager. The recommended way to install it is with `pip`, simply using `pip install conan`. If you don't have and don't want pip installed, alternatives can be found [here](https://docs.conan.io/en/latest/installation.html).
+
 #### AMReX
-AMReX is a C++ adaptive mesh refinement library. The source can be downloaded from the [AMReX GitHub](https://github.com/AMReX-Codes/amrex). 
+AMReX is a C++ adaptive mesh refinement library. The source can be downloaded from the [AMReX GitHub](https://github.com/AMReX-Codes/amrex).
 
 **Important**: The library that AMReX builds with GNU Make is subtly different from the one that it builds with cmake. LAMBReX now supports only the cmake version. Additionally AMReX is updated *regularly*. LAMBReX is attempting to move with it, so minimum version 19.02 is `REQUIRED`.
 
