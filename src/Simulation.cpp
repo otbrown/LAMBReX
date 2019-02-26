@@ -201,20 +201,20 @@ void Simulation::propagate() {
 }
 
 Simulation::Simulation(int const nx, int const ny, int const nz,
-  double const tau_s, double const tau_b, int (&periodicity)[NDIMS])
+double const tau_s, double const tau_b, int (&periodicity)[NDIMS])
 : NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
-  PERIODICITY{ periodicity[0], periodicity[1], periodicity[2] },
-  TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
-  OMEGA_B(1.0/(tau_b+0.5)),
-  idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
-              amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
-              amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
-  phys_domain( {AMREX_D_DECL(0.0, 0.0, 0.0)},
-               {AMREX_D_DECL( (double) nx-1, (double) ny-1, (double) nz-1 )} ),
-  geometry(idx_domain, &phys_domain, COORD_SYS, periodicity),
-  ba_domain(idx_domain), dm(ba_domain), density(ba_domain, dm, 1, 0),
-  velocity(ba_domain, dm, NDIMS, 0), dist_fn(ba_domain, dm, NMODES, HALO_DEPTH)
-  {};
+PERIODICITY{ periodicity[0], periodicity[1], periodicity[2] },
+TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
+OMEGA_B(1.0/(tau_b+0.5)),
+idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
+            amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
+            amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
+phys_domain( {AMREX_D_DECL(0.0, 0.0, 0.0)},
+             {AMREX_D_DECL( (double) nx-1, (double) ny-1, (double) nz-1 )} ),
+geometry(idx_domain, &phys_domain, COORD_SYS, periodicity),
+ba_domain(idx_domain), dm(ba_domain), density(ba_domain, dm, 1, 0),
+velocity(ba_domain, dm, NDIMS, 0), dist_fn(ba_domain, dm, NMODES, HALO_DEPTH)
+{};
 
 double Simulation::getDensity(const int i, const int j, const int k) const {
   amrex::IntVect pos(i,j,k);
@@ -222,6 +222,15 @@ double Simulation::getDensity(const int i, const int j, const int k) const {
     if (density[mfi].box().contains(pos)) return density[mfi](pos);
   }
   return -1.0;
+}
+
+double Simulation::getVelocity(const int i, const int j, const int k,
+const int n) const {
+  amrex::IntVect pos(i,j,k);
+  for (amrex::MFIter mfi(velocity); mfi.isValid(); ++mfi) {
+    if(velocity[mfi].box().contains(pos)) return velocity[mfi](pos,n);
+  }
+  return 0.0;
 }
 
 void Simulation::setDensity(const double uniform_density) {

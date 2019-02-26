@@ -72,6 +72,7 @@ public:
   int getTimeStep() const { return time_step; }
   std::array<int,NDIMS> getDims() const {return std::array<int,NDIMS>{NX,NY,NZ};}
   double getDensity(const int, const int, const int) const;
+  double getVelocity(const int, const int, const int, const int) const;
   void setDensity(const double);
   void setDensity(const int, const int, const int, const double);
   void setVelocity(const double);
