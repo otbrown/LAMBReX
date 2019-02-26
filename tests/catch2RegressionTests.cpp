@@ -11,7 +11,7 @@ TEST_CASE("pulse Regression", "[regression]")
   double amplitude = 0.01;
   int periodicity[3] = {1, 1, 1};
   double z_mean, tmp;
-  int i, j, k;
+  int i, j, k, lindex;
 
   Simulation sim(NX, NY, NZ, TAU, TAU, periodicity);
 
@@ -45,14 +45,42 @@ TEST_CASE("pulse Regression", "[regression]")
   // calculate initial distribution function
   sim.calcEquilibriumDist();
 
-  SECTION("density at t=0") {
-    int lindex = 0;
-    for (k = 0; k < NZ; ++k) {
-      for (j = 0; j < NY; ++j) {
-        for (i = 0; i < NX; ++i) {
-          REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t0[lindex]));
-          ++lindex;
-        }
+  lindex = 0;
+  for (k = 0; k < NZ; ++k) {
+    for (j = 0; j < NY; ++j) {
+      for (i = 0; i < NX; ++i) {
+        INFO("t=0 (i,j,k)=(" << i << "," << j << "," << k << ") lindex="
+             << lindex)
+        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t0[lindex]));
+        ++lindex;
+      }
+    }
+  }
+
+  sim.iterate(100);
+  sim.calcHydroVars();
+  lindex = 0;
+  for (k = 0; k < NZ; ++k) {
+    for (j = 0; j < NY; ++j) {
+      for (i = 0; i < NX; ++i) {
+        INFO("t=100 (i,j,k)=(" << i << "," << j << "," << k << ") lindex="
+             << lindex)
+        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t100[lindex]));
+        ++lindex;
+      }
+    }
+  }
+
+  sim.iterate(100);
+  sim.calcHydroVars();
+  lindex = 0;
+  for (k = 0; k < NZ; ++k) {
+    for (j = 0; j < NY; ++j) {
+      for (i = 0; i < NX; ++i) {
+        INFO("t=200 (i,j,k)=(" << i << "," << j << "," << k << ") lindex="
+             << lindex)
+        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t200[lindex]));
+        ++lindex;
       }
     }
   }
