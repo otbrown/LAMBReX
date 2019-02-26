@@ -1,4 +1,5 @@
 #include <catch2/catch.hpp>
+#include <limits>
 #include "lambrex.h"
 #include "pulseRegression.h"
 
@@ -11,7 +12,7 @@ TEST_CASE("pulse Regression", "[regression]")
   double amplitude = 0.01;
   int periodicity[3] = {1, 1, 1};
   double z_mean, tmp;
-  int i, j, k, lindex;
+  int i, j, k, n, rhodex, veldex;
 
   Simulation sim(NX, NY, NZ, TAU, TAU, periodicity);
 
@@ -45,42 +46,54 @@ TEST_CASE("pulse Regression", "[regression]")
   // calculate initial distribution function
   sim.calcEquilibriumDist();
 
-  lindex = 0;
+  rhodex = 0;
+  veldex = 0;
   for (k = 0; k < NZ; ++k) {
     for (j = 0; j < NY; ++j) {
       for (i = 0; i < NX; ++i) {
-        INFO("t=0 (i,j,k)=(" << i << "," << j << "," << k << ") lindex="
-             << lindex)
-        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t0[lindex]));
-        ++lindex;
+        INFO("t=0 (i,j,k)=(" << i << "," << j << "," << k << ") rhodex="
+             << rhodex)
+        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t0[rhodex++]));
+        for (n = 0; n < AMREX_SPACEDIM; ++n) {
+          INFO("veldex=" << veldex << " n=" << n)
+          REQUIRE(sim.getVelocity(i, j, k, n) == Approx(VEL_t0[veldex++]));
+        }
       }
     }
   }
 
   sim.iterate(100);
   sim.calcHydroVars();
-  lindex = 0;
+  rhodex = 0;
+  veldex = 0;
   for (k = 0; k < NZ; ++k) {
     for (j = 0; j < NY; ++j) {
       for (i = 0; i < NX; ++i) {
-        INFO("t=100 (i,j,k)=(" << i << "," << j << "," << k << ") lindex="
-             << lindex)
-        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t100[lindex]));
-        ++lindex;
+        INFO("t=100 (i,j,k)=(" << i << "," << j << "," << k << ") rhodex="
+             << rhodex)
+        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t100[rhodex++]));
+        for (n = 0; n < AMREX_SPACEDIM; ++n) {
+          INFO("veldex=" << veldex << " n=" << n)
+          REQUIRE(sim.getVelocity(i, j, k, n) == Approx(VEL_t100[veldex++]));
+        }
       }
     }
   }
 
   sim.iterate(100);
   sim.calcHydroVars();
-  lindex = 0;
+  rhodex = 0;
+  veldex = 0;
   for (k = 0; k < NZ; ++k) {
     for (j = 0; j < NY; ++j) {
       for (i = 0; i < NX; ++i) {
-        INFO("t=200 (i,j,k)=(" << i << "," << j << "," << k << ") lindex="
-             << lindex)
-        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t200[lindex]));
-        ++lindex;
+        INFO("t=200 (i,j,k)=(" << i << "," << j << "," << k << ") rhodex="
+             << rhodex)
+        REQUIRE(sim.getDensity(i, j, k) == Approx(RHO_t200[rhodex++]));
+        for (n = 0; n < AMREX_SPACEDIM; ++n) {
+          INFO("veldex=" << veldex << " n=" << n)
+          REQUIRE(sim.getVelocity(i, j, k, n) == Approx(VEL_t200[veldex++]));
+        }
       }
     }
   }
