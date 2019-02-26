@@ -1,7 +1,8 @@
 #include <iostream>
 #include "lambrex.h"
 
-void report(const Simulation&);
+void printDensity(const Simulation&);
+void printVelocity(const Simulation&);
 
 int main (int argc, char * argv[])
 {
@@ -51,29 +52,66 @@ int main (int argc, char * argv[])
     lbrx.calcEquilibriumDist();
     std::cout << "Equilibrium distribution calculated." << std::endl;
 
-    report(lbrx);
+    printDensity(lbrx);
+    printVelocity(lbrx);
     lbrx.iterate(100);
     lbrx.calcHydroVars();
-    report(lbrx);
+    printDensity(lbrx);
+    printVelocity(lbrx);
     lbrx.iterate(100);
     lbrx.calcHydroVars();
-    report(lbrx);
+    printDensity(lbrx);
+    printVelocity(lbrx);
   }
   amrex::Finalize();
 
   return 0;
 }
 
-void report(const Simulation& sim) {
+void printDensity(const Simulation& sim) {
   const std::array<int,NDIMS> DIMS = sim.getDims();
+  const int NUMEL = DIMS[0] * DIMS[1] * DIMS[2];
   std::cout.precision(6);
 
   std::cout << "Time step: " << sim.getTimeStep() << std::endl;
-  std::cout << "Density:\n[ ";
+  std::cout << "Density:\n{ ";
   for (int k = 0; k < DIMS[2]; ++k) {
-    std::cout << sim.getDensity(DIMS[0]/2, DIMS[1]/2, k) << " ";
+    for (int j = 0; j < DIMS[1]; ++j) {
+      for (int i = 0; i < DIMS[0]; ++i) {
+        if (k*DIMS[0]*DIMS[1] + j*DIMS[0] + i < NUMEL-1) {
+          std::cout << sim.getDensity(i, j, k) << ", ";
+        } else {
+          std::cout << sim.getDensity(i, j, k) << " };";
+        }
+      }
+    }
   }
-  std::cout << "]" << std::endl;
+  std::cout << std::endl;
+
+  return;
+}
+
+void printVelocity(const Simulation& sim) {
+  const std::array<int,NDIMS> DIMS = sim.getDims();
+  const int NUMEL = DIMS[0] * DIMS[1] * DIMS[2] * NDIMS;
+  std::cout.precision(6);
+
+  std::cout << "Time step: " << sim.getTimeStep() << std::endl;
+  std::cout << "Velocity:\n{ ";
+  for (int k = 0; k < DIMS[2]; ++k) {
+    for (int j = 0; j < DIMS[1]; ++j) {
+      for (int i = 0; i < DIMS[0]; ++i) {
+        for (int n = 0; n < NDIMS; ++n) {
+          if (n*DIMS[0]*DIMS[1]*DIMS[2] + k*DIMS[0]*DIMS[1] + j*DIMS[0] + i < NUMEL-1) {
+            std::cout << sim.getVelocity(i, j, k, n) << ", ";
+          } else {
+            std::cout << sim.getVelocity(i, j, k, n) << " };";
+          }
+        }
+      }
+    }
+  }
+  std::cout << std::endl;
 
   return;
 }
