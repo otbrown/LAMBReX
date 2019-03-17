@@ -17,7 +17,7 @@ private:
   const int NZ;
   const int NUMEL;
   const int COORD_SYS;
-  const int PERIODICITY[NDIMS];
+  int PERIODICITY[NDIMS];
 
   // model parameters
   constexpr static double CS2 = 1.0 / 3.0; // speed of sound squared

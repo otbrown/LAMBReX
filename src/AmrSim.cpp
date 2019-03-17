@@ -27,13 +27,17 @@ phys_domain( domain ), ba_domain(idx_domain), dm(ba_domain),
 density(ba_domain, dm, 1, 0), velocity(ba_domain, dm, NDIMS, 0),
 dist_fn(ba_domain, dm, NMODES, HALO_DEPTH)
 {
-  printf("Initialising AmrSim\n");
-  // rewrite dummy domain here
+  // As we don't use ParmParse the base class is initialised with dummy inputs.
+  // We set the max grid size, blocking factor distribution map, BoxArray, and
+  // geometry here...
   verbose = 1;
   SetMaxGridSize(amrex::IntVect(AMREX_D_DECL(nx-1,ny-1,nz-1)));
   SetBlockingFactor(amrex::IntVect(AMREX_D_DECL(nx-1,ny-1,nz-1)));
   SetDistributionMap(0, dm);
   SetBoxArray(0, ba_domain);
-  printGridSummary(std::cout, 0, 0);
-  std::cout << Geom(0).isAllPeriodic() << std::endl;
+  geom.clear();
+  // This is done to reset static variables in Geometry
+  amrex::Geometry::Finalize();
+  // note: there is a new constructor with RealBox& available in 19.03!
+  geom.emplace_back(ba_domain[0], &phys_domain, COORD_SYS, PERIODICITY);
 };
