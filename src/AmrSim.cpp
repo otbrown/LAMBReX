@@ -10,23 +10,22 @@ const int offset_b) {
   return;
 }
 
-void AmrSim::UpdateBoundaries() {
-  for (int i = 0; i < max_level; ++i)
-    dist_fn.FillBoundary(geom[i].periodicity());
+void AmrSim::UpdateBoundaries(int level) {
+  dist_fn.at(level).FillBoundary(geom[level].periodicity());
   return;
 }
 
-void AmrSim::Collide() {
+void AmrSim::Collide(int level) {
   amrex::IntVect pos(0);
   std::array<double, NMODES> mode;
   double usq, TrS;
   double stress[NMODES][NMODES];
   int a, b, m, p;
 
-  for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
-    amrex::FArrayBox& fab_dist_fn = dist_fn[mfi];
-    amrex::FArrayBox& fab_density = density[mfi];
-    amrex::FArrayBox& fab_velocity = velocity[mfi];
+  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
+    amrex::FArrayBox& fab_density = density.at(level)[mfi];
+    amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
 
     // will need to replace NX/NY/NZ with local domain sizes
     for (int k = 0; k < NZ; ++k) {
@@ -121,7 +120,7 @@ void AmrSim::Collide() {
   return;
 }
 
-void AmrSim::Propagate() {
+void AmrSim::Propagate(int level) {
   // Explanation from subgrid source
   /* The propagation step of the algorithm.
   *
@@ -150,9 +149,9 @@ void AmrSim::Propagate() {
   double * data;
   amrex::IntVect dims(0);
 
-  for (amrex::MFIter mfi(dist_fn); mfi.isValid(); ++mfi) {
-    data = dist_fn[mfi].dataPtr();
-    dims = dist_fn[mfi].length();
+  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+    data = dist_fn.at(level)[mfi].dataPtr();
+    dims = dist_fn.at(level)[mfi].length();
 
     // this looping is bad for FAB, but will need to reorder swaps too...
     for (int i = 0; i < dims[0]; ++i) {
@@ -202,7 +201,14 @@ void AmrSim::Propagate() {
 
 void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) { return; }
 
-void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) { return ; }
+void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
+  // define MultiFabs
+  density[level].define(ba, dm, 1, 0);
+  velocity[level].define(ba, dm, NDIMS, 0);
+  dist_fn[level].define(ba, dm, NMODES, HALO_DEPTH);
+
+  return;
+}
 
 void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) { return; }
 
@@ -217,7 +223,7 @@ amrex::RealBox& domain)
 NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
 PERIODICITY{ periodicity[0], periodicity[1], periodicity[2] },
 TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
-OMEGA_B(1.0/(tau_b+0.5)),
+OMEGA_B(1.0/(tau_b+0.5)), time_step(1, 0.0),
 idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
             amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
             amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
@@ -236,6 +242,12 @@ phys_domain( domain ), ba_domain(idx_domain), dm(ba_domain)
   amrex::Geometry::Finalize();
   // note: there is a new constructor with RealBox& available in 19.03!
   geom.emplace_back(ba_domain[0], &phys_domain, COORD_SYS, PERIODICITY);
+
+  // resize MF vectors
+  int num_levels = max_level + 1;
+  density.resize(num_levels);
+  velocity.resize(num_levels);
+  dist_fn.resize(num_levels);
 };
 
 void AmrSim::SetInitialDensity(const double rho_init) {
@@ -261,6 +273,17 @@ void AmrSim::SetInitialVelocity(const std::vector<double> u_init) {
 void AmrSim::InitDistFunc() {
 
   return;
+}
+
+double AmrSim::GetDensity(const int i, const int j, const int k,
+const int level) const {
+  amrex::IntVect pos(i,j,k);
+  for (amrex::MFIter mfi(density.at(level)); mfi.isValid(); ++mfi) {
+    if (density.at(level)[mfi].box().contains(pos))
+      return density.at(level)[mfi](pos);
+  }
+  amrex::Abort("Invalid index to density MultiFab.");
+  return -1.0;
 }
 
 // static member definitions

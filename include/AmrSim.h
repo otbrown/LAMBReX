@@ -32,8 +32,8 @@ private:
   std::vector<double> initial_density;
   std::vector<double> initial_velocity;
 
-  // current coarse time step
-  int time_step = 0;
+  // current time step
+  std::vector<double> time_step;
 
   //  AMReX domain specification
   amrex::Box idx_domain;
@@ -42,11 +42,11 @@ private:
   amrex::DistributionMapping dm;
 
   // hydrodynamic variables (output arrays)
-  amrex::MultiFab density;
-  amrex::MultiFab velocity;
+  std::vector<amrex::MultiFab> density;
+  std::vector<amrex::MultiFab> velocity;
 
   // distribution function (work array)
-  amrex::MultiFab dist_fn;
+  std::vector<amrex::MultiFab> dist_fn;
 
   // member functions
   int Lindex(const int i, const int j, const int k, const int n,
@@ -55,9 +55,9 @@ private:
             + j * dims[0] + i);
   }
   void SwapElements(double * const, const int, const int);
-  void UpdateBoundaries();
-  void Collide();
-  void Propagate();
+  void UpdateBoundaries(int);
+  void Collide(int);
+  void Propagate(int);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
@@ -72,15 +72,17 @@ private:
 public:
   AmrSim(int const, int const, int const, double const, double const,
     int (&)[NDIMS], amrex::RealBox&);
-  int GetTimeStep() const { return time_step; }
-  std::array<int,NDIMS> GetDims() const {return std::array<int,NDIMS>{NX,NY,NZ};}
+  double GetTimeStep(int level) const { return time_step.at(level); }
+  std::array<int,NDIMS> GetDims() const {
+    return std::array<int,NDIMS>{NX,NY,NZ}; }
   void SetInitialDensity(const double);
   void SetInitialDensity(const std::vector<double>);
   void SetInitialVelocity(const double);
   void SetInitialVelocity(const std::vector<double>);
   void InitDistFunc();
-  double GetDensity(const int, const int, const int) const;
-  double GetVelocity(const int, const int, const int, const int) const;
+  double GetDensity(int const, int const, int const, int const) const;
+  double GetVelocity(int const, int const, int const, int const, int const)
+    const;
   void CalcEquilibriumDist();
   void CalcHydroVars();
 
