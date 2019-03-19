@@ -29,6 +29,8 @@ private:
   static const double DELTA[NDIMS][NDIMS];
   static const double MODE_MATRIX[NMODES][NMODES];
   static const double MODE_MATRIX_INVERSE[NMODES][NMODES];
+  std::vector<double> initial_density;
+  std::vector<double> initial_velocity;
 
   // current coarse time step
   int time_step = 0;
@@ -70,15 +72,15 @@ private:
 public:
   AmrSim(int const, int const, int const, double const, double const,
     int (&)[NDIMS], amrex::RealBox&);
-  ~AmrSim() {};
   int GetTimeStep() const { return time_step; }
   std::array<int,NDIMS> GetDims() const {return std::array<int,NDIMS>{NX,NY,NZ};}
+  void SetInitialDensity(const double);
+  void SetInitialDensity(const std::vector<double>);
+  void SetInitialVelocity(const double);
+  void SetInitialVelocity(const std::vector<double>);
+  void InitDistFunc();
   double GetDensity(const int, const int, const int) const;
   double GetVelocity(const int, const int, const int, const int) const;
-  void SetDensity(const double);
-  void SetDensity(const int, const int, const int, const double);
-  void SetVelocity(const double);
-  void setVelocity(const int, const int, const int, const double);
   void CalcEquilibriumDist();
   void CalcHydroVars();
 
