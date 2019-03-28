@@ -286,6 +286,139 @@ const int level) const {
   return -1.0;
 }
 
+double AmrSim::GetVelocity(const int i, const int j, const int k,
+const int n, const int level) const {
+  amrex::IntVect pos(i,j,k);
+  for (amrex::MFIter mfi(density.at(level)); mfi.isValid(); ++mfi) {
+    if (density.at(level)[mfi].box().contains(pos))
+      return density.at(level)[mfi](pos, n);
+  }
+  amrex::Abort("Invalid index to density MultiFab.");
+  return -9999.0;
+}
+
+void AmrSim::CalcEquilibriumDist(int const level) {
+  double u2[NDIMS], mod_sq, u_cs2[NDIMS], u2_2cs4[NDIMS], uv_cs4, vw_cs4, uw_cs4, mod_sq_2;
+  double u[NDIMS], rho, rho_w[NDIMS];
+  amrex::IntVect pos(0);
+
+  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
+    amrex::FArrayBox& fab_density = density.at(level)[mfi];
+    amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
+
+    // will need to replace NX/NY/NZ with local domain sizes
+    for (int k = 0; k < NZ; ++k) {
+      pos.setVal(2, k);
+      for (int j = 0; j < NY; ++j) {
+        pos.setVal(1, j);
+        for (int i = 0; i < NX; ++i) {
+          pos.setVal(0, i);
+
+          // get density and velocity at this point in space
+          rho = fab_density(pos);
+          u[0] = fab_velocity(pos, 0);
+          u[1] = fab_velocity(pos, 1);
+          u[2] = fab_velocity(pos, 2);
+
+          // calculate coefficients
+          rho_w[0] = rho * 2.0 / 9.0;
+          rho_w[1] = rho / 9.0;
+          rho_w[2] = rho / 72.0;
+
+          u2[0] = u[0]*u[0];
+          u2[1] = u[1]*u[1];
+          u2[2] = u[2]*u[2];
+
+          u_cs2[0] = u[0] / CS2;
+          u_cs2[1] = u[1] / CS2;
+          u_cs2[2] = u[2] / CS2;
+
+          u2_2cs4[0] = u2[0] / (2.0 * CS2 * CS2);
+          u2_2cs4[1] = u2[1] / (2.0 * CS2 * CS2);
+          u2_2cs4[2] = u2[2] / (2.0 * CS2 * CS2);
+
+          uv_cs4 = u_cs2[0] * u_cs2[1];
+          vw_cs4 = u_cs2[1] * u_cs2[2];
+          uw_cs4 = u_cs2[0] * u_cs2[2];
+
+          mod_sq = (u2[0] + u2[1] + u2[2]) / (2.0 * CS2);
+          mod_sq_2 = (u2[0] + u2[1] + u2[2]) * (1 - CS2) / (2.0 * CS2 * CS2);
+
+          // set distribution function
+          fab_dist_fn(pos, 0) = rho_w[0] * (1.0 - mod_sq);
+
+          fab_dist_fn(pos, 1) = rho_w[1] * (1.0 - mod_sq + u_cs2[0] + u2_2cs4[0]);
+          fab_dist_fn(pos, 2) = rho_w[1] * (1.0 - mod_sq - u_cs2[0] + u2_2cs4[0]);
+          fab_dist_fn(pos, 3) = rho_w[1] * (1.0 - mod_sq + u_cs2[1] + u2_2cs4[1]);
+          fab_dist_fn(pos, 4) = rho_w[1] * (1.0 - mod_sq - u_cs2[1] + u2_2cs4[1]);
+          fab_dist_fn(pos, 5) = rho_w[1] * (1.0 - mod_sq + u_cs2[2] + u2_2cs4[2]);
+          fab_dist_fn(pos, 6) = rho_w[1] * (1.0 - mod_sq - u_cs2[2] + u2_2cs4[2]);
+
+          fab_dist_fn(pos, 7) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] + u_cs2[2]
+                                        + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 8) = rho_w[2] * (1.0 + u_cs2[0] + u_cs2[1] - u_cs2[2]
+                                        + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 9) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] + u_cs2[2]
+                                        - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 10) = rho_w[2] * (1.0 + u_cs2[0] - u_cs2[1] - u_cs2[2]
+                                         - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 11) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] + u_cs2[2]
+                                         - uv_cs4 + vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 12) = rho_w[2] * (1.0 - u_cs2[0] + u_cs2[1] - u_cs2[2]
+                                         - uv_cs4 - vw_cs4 + uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 13) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] + u_cs2[2]
+                                         + uv_cs4 - vw_cs4 - uw_cs4 + mod_sq_2);
+          fab_dist_fn(pos, 14) = rho_w[2] * (1.0 - u_cs2[0] - u_cs2[1] - u_cs2[2]
+                                         + uv_cs4 + vw_cs4 + uw_cs4 + mod_sq_2);
+        } // i
+      } // j
+    } // k
+  } // MultiFabIter
+
+  UpdateBoundaries(level);
+
+  return;
+}
+
+void AmrSim::CalcHydroVars(int const level) {
+  amrex::IntVect pos(0);
+  std::array<double, NMODES> mode;
+
+  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
+    amrex::FArrayBox& fab_density = density.at(level)[mfi];
+    amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
+
+    for (int k = 0; k < NZ; ++k) {
+      pos.setVal(2, k);
+      for (int j = 0; j < NY; ++j) {
+        pos.setVal(1, j);
+        for (int i = 0; i < NX; ++i) {
+          pos.setVal(0, i);
+
+          // it seems like only the first 4 elements of mode are used, even with
+          // a force present (which there is not here...)
+          for (int m = 0; m < NMODES; ++m) {
+            mode[m] = 0.0;
+            for (int p = 0; p < NMODES; ++p) {
+              mode[m] += fab_dist_fn(pos, p) * MODE_MATRIX[m][p];
+            }
+          }
+
+          fab_density(pos) = mode[0];
+          for (int a = 0; a < NDIMS; ++a) {
+            fab_velocity(pos, a) = mode[a+1] / mode[0];
+          }
+
+        } // i
+      } // j
+    } // k
+  } // MFIter
+
+  return;
+}
+
 // static member definitions
 const double AmrSim::DELTA[NDIMS][NDIMS] = { {1.0 / NMODES, 0.0, 0.0},
                                            {0.0, 1.0 / NMODES, 0.0},

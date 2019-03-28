@@ -32,7 +32,7 @@ private:
   std::vector<double> initial_density;
   std::vector<double> initial_velocity;
 
-  // current time step
+  // current time steps
   std::vector<double> time_step;
 
   //  AMReX domain specification
@@ -83,8 +83,8 @@ public:
   double GetDensity(int const, int const, int const, int const) const;
   double GetVelocity(int const, int const, int const, int const, int const)
     const;
-  void CalcEquilibriumDist();
-  void CalcHydroVars();
+  void CalcEquilibriumDist(int const);
+  void CalcHydroVars(int const);
 
   int Iterate(int const);
 
