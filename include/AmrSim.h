@@ -17,7 +17,7 @@ private:
   const int NZ;
   const int NUMEL;
   const int COORD_SYS;
-  int PERIODICITY[NDIMS];
+  std::array<int,NDIMS> PERIODICITY;
 
   // model parameters
   constexpr static double CS2 = 1.0 / 3.0; // speed of sound squared
@@ -71,7 +71,7 @@ private:
 
 public:
   AmrSim(int const, int const, int const, double const, double const,
-    int (&)[NDIMS], amrex::RealBox&);
+    std::array<int,NDIMS>&, amrex::RealBox&);
   double GetTimeStep(int level) const { return time_step.at(level); }
   std::array<int,NDIMS> GetDims() const {
     return std::array<int,NDIMS>{NX,NY,NZ}; }

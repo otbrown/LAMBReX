@@ -217,13 +217,12 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
 void AmrSim::ClearLevel(int level) { return; }
 
 AmrSim::AmrSim(int const nx, int const ny, int const nz,
-double const tau_s, double const tau_b, int (&periodicity)[NDIMS],
+double const tau_s, double const tau_b, std::array<int,NDIMS>& periodicity,
 amrex::RealBox& domain)
 : AmrCore(&domain, 0, amrex::Vector<int>({AMREX_D_DECL(8,8,8)}), 0),
 NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
-PERIODICITY{ periodicity[0], periodicity[1], periodicity[2] },
-TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
-OMEGA_B(1.0/(tau_b+0.5)), time_step(1, 0.0),
+PERIODICITY{ periodicity }, TAU_S(tau_s), TAU_B(tau_b),
+OMEGA_S(1.0/(tau_s+0.5)), OMEGA_B(1.0/(tau_b+0.5)), time_step(1, 0.0),
 idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
             amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
             amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
@@ -241,7 +240,7 @@ phys_domain( domain ), ba_domain(idx_domain), dm(ba_domain)
   // This is done to reset static variables in Geometry
   amrex::Geometry::Finalize();
   // note: there is a new constructor with RealBox& available in 19.03!
-  geom.emplace_back(ba_domain[0], &phys_domain, COORD_SYS, PERIODICITY);
+  geom.emplace_back(ba_domain[0], phys_domain, COORD_SYS, PERIODICITY);
 
   // resize MF vectors
   int num_levels = max_level + 1;
