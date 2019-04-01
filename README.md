@@ -14,7 +14,7 @@ From the home directory create a build directory and cd to it -- for example `mk
 #### AMReX
 AMReX is a C++ adaptive mesh refinement library. The source can be downloaded from the [AMReX GitHub](https://github.com/AMReX-Codes/amrex).
 
-**Important**: The library that AMReX builds with GNU Make is subtly different from the one that it builds with cmake. LAMBReX now supports only the cmake version. Additionally AMReX is updated *regularly*. LAMBReX is attempting to move with it, so minimum version 19.02 is `REQUIRED`.
+**Important**: The library that AMReX builds with GNU Make is subtly different from the one that it builds with cmake. LAMBReX now supports only the cmake version. Additionally AMReX is updated *regularly*. LAMBReX is attempting to move with it, so minimum version 19.03 is `REQUIRED`. Additionally version 19.03+ of AMReX depends on [Blitz++](https://github.com/blitzpp/blitz) being installed.
 
 To build the static AMReX library with cmake in way that is compatible with the current version of LAMBReX, please follow the commands given in (or run) [amrex_cmake.sh](https://github.com/otbrown/LAMBReX/blob/master/amrex_cmake.sh).
 

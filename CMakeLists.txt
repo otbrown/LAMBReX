@@ -22,7 +22,7 @@ if (LAMBREX_USE_CONAN)
 endif()
 
 # You may need to set AMREX_DIR to help cmake find the config files
-find_package(AMReX 19.02 REQUIRED)
+find_package(AMReX 19.03 REQUIRED)
 if (NOT "${AMREX_DIM}" EQUAL 3)
   message(FATAL_ERROR "AMReX compiled not for 3D!")
 endif()
@@ -39,6 +39,6 @@ if (LAMBREX_BUILD_TESTS)
   enable_testing()
   include(CTest)
   include(Catch)
-  
+
   add_subdirectory(tests)
 endif()
