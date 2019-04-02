@@ -33,13 +33,12 @@ private:
   std::vector<double> initial_velocity;
 
   // current time steps
-  std::vector<double> time_step;
+  std::vector<double> time_steps;
 
   //  AMReX domain specification
   amrex::Box idx_domain;
   amrex::RealBox phys_domain;
   amrex::BoxArray ba_domain;
-  amrex::DistributionMapping dm;
 
   // hydrodynamic variables (output arrays)
   std::vector<amrex::MultiFab> density;
@@ -49,15 +48,22 @@ private:
   std::vector<amrex::MultiFab> dist_fn;
 
   // member functions
-  int Lindex(const int i, const int j, const int k, const int n,
-             const amrex::IntVect dims) const {
+  int FLindex(const int i, const int j, const int k, const int n,
+              const amrex::IntVect dims) const {
     return (n * dims[0] * dims[1] * dims[2] + k * dims[0] * dims[1]
             + j * dims[0] + i);
+  }
+  int CLindex(const int i, const int j, const int k, const int n,
+              const amrex::IntVect dims, const int n_comps) const {
+    return (i * dims[1] * dims[2] * n_comps + j * dims[2] * n_comps
+            + k * n_comps + n);
   }
   void SwapElements(double * const, const int, const int);
   void UpdateBoundaries(int);
   void Collide(int);
   void Propagate(int);
+  void InitDensity(int);
+  void InitVelocity(int);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
@@ -72,14 +78,13 @@ private:
 public:
   AmrSim(int const, int const, int const, double const, double const,
     std::array<int,NDIMS>&, amrex::RealBox&);
-  double GetTimeStep(int level) const { return time_step.at(level); }
+  double GetTime(int level) const { return time_steps.at(level); }
   std::array<int,NDIMS> GetDims() const {
     return std::array<int,NDIMS>{NX,NY,NZ}; }
   void SetInitialDensity(const double);
   void SetInitialDensity(const std::vector<double>);
   void SetInitialVelocity(const double);
   void SetInitialVelocity(const std::vector<double>);
-  void InitDistFunc();
   double GetDensity(int const, int const, int const, int const) const;
   double GetVelocity(int const, int const, int const, int const, int const)
     const;

@@ -160,40 +160,110 @@ void AmrSim::Propagate(int level) {
 
           // [1,0,0]
           if (i < dims[0]-1)
-          SwapElements(data, Lindex(i,j,k,1,dims), Lindex(i+1,j,k,2,dims));
+          SwapElements(data, FLindex(i,j,k,1,dims), FLindex(i+1,j,k,2,dims));
           // [0,1,0]
           if (j < dims[1]-1)
-          SwapElements(data, Lindex(i,j,k,3,dims), Lindex(i,j+1,k,4,dims));
+          SwapElements(data, FLindex(i,j,k,3,dims), FLindex(i,j+1,k,4,dims));
           // [0,0,1]
           if (k < dims[2]-1)
-          SwapElements(data, Lindex(i,j,k,5,dims), Lindex(i,j,k+1,6,dims));
+          SwapElements(data, FLindex(i,j,k,5,dims), FLindex(i,j,k+1,6,dims));
 
           // [1,1,1]
           if (i < dims[0]-1 && j < dims[1]-1 && k < dims[2]-1)
-          SwapElements(data, Lindex(i,j,k,7,dims), Lindex(i+1,j+1,k+1,14,dims));
+          SwapElements(data, FLindex(i,j,k,7,dims), FLindex(i+1,j+1,k+1,14,dims));
           // [1,1,-1]
           if (i < dims[0]-1 && j < dims[1]-1 && k > 0)
-          SwapElements(data, Lindex(i,j,k,8,dims), Lindex(i+1,j+1,k-1,13,dims));
+          SwapElements(data, FLindex(i,j,k,8,dims), FLindex(i+1,j+1,k-1,13,dims));
           // [1,-1,1]
           if (i < dims[0]-1 && j > 0 && k < dims[2]-1)
-          SwapElements(data, Lindex(i,j,k,9,dims), Lindex(i+1,j-1,k+1,12,dims));
+          SwapElements(data, FLindex(i,j,k,9,dims), FLindex(i+1,j-1,k+1,12,dims));
           // [1,-1,-1]
           if (i < dims[0]-1 && j > 0 && k > 0)
-          SwapElements(data, Lindex(i,j,k,10,dims), Lindex(i+1,j-1,k-1,11,dims));
+          SwapElements(data, FLindex(i,j,k,10,dims), FLindex(i+1,j-1,k-1,11,dims));
 
           // reorder
-          SwapElements(data, Lindex(i,j,k,1,dims), Lindex(i,j,k,2,dims));
-          SwapElements(data, Lindex(i,j,k,3,dims), Lindex(i,j,k,4,dims));
-          SwapElements(data, Lindex(i,j,k,5,dims), Lindex(i,j,k,6,dims));
+          SwapElements(data, FLindex(i,j,k,1,dims), FLindex(i,j,k,2,dims));
+          SwapElements(data, FLindex(i,j,k,3,dims), FLindex(i,j,k,4,dims));
+          SwapElements(data, FLindex(i,j,k,5,dims), FLindex(i,j,k,6,dims));
 
-          SwapElements(data, Lindex(i,j,k,7,dims), Lindex(i,j,k,14,dims));
-          SwapElements(data, Lindex(i,j,k,8,dims), Lindex(i,j,k,13,dims));
-          SwapElements(data, Lindex(i,j,k,9,dims), Lindex(i,j,k,12,dims));
-          SwapElements(data, Lindex(i,j,k,10,dims), Lindex(i,j,k,11,dims));
+          SwapElements(data, FLindex(i,j,k,7,dims), FLindex(i,j,k,14,dims));
+          SwapElements(data, FLindex(i,j,k,8,dims), FLindex(i,j,k,13,dims));
+          SwapElements(data, FLindex(i,j,k,9,dims), FLindex(i,j,k,12,dims));
+          SwapElements(data, FLindex(i,j,k,10,dims), FLindex(i,j,k,11,dims));
         }
       }
     }
 
+  }
+
+  return;
+}
+
+void AmrSim::InitDensity(int level) {
+  amrex::IntVect dims(NX, NY, NZ);
+  amrex::IntVect lo(0);
+  amrex::IntVect hi(0);
+  amrex::IntVect pos(0);
+  int lindex;
+
+  if (!level) {
+    for (amrex::MFIter mfi(density.at(level)); mfi.isValid(); ++mfi) {
+      const amrex::Box& box = mfi.validbox();
+      amrex::FArrayBox& rho = density.at(level)[mfi];
+
+      lo = box.smallEnd();
+      hi = box.bigEnd();
+
+      for (int k = lo[2]; k < hi[2]; ++k) {
+        pos.setVal(2, k);
+        for (int j = lo[1]; j < hi[1]; ++j) {
+          pos.setVal(1, j);
+          for (int i = lo[0]; i < hi[0]; ++i) {
+            pos.setVal(0, i);
+            lindex = CLindex(i, j, k, 0, dims, 1);
+            rho(pos) = initial_density.at(lindex);
+          }
+        }
+      }
+    }
+  } else {
+    amrex::Abort("Only level 0 should be initialised from scratch currently.");
+  }
+
+  return;
+}
+
+void AmrSim::InitVelocity(int level) {
+  amrex::IntVect dims(NX, NY, NZ);
+  amrex::IntVect lo(0);
+  amrex::IntVect hi(0);
+  amrex::IntVect pos(0);
+  int lindex;
+
+  if (!level) {
+    for (amrex::MFIter mfi(velocity.at(level)); mfi.isValid(); ++mfi) {
+      const amrex::Box& box = mfi.validbox();
+      amrex::FArrayBox& u = velocity.at(level)[mfi];
+
+      lo = box.smallEnd();
+      hi = box.bigEnd();
+
+      for (int k = lo[2]; k < hi[2]; ++k) {
+        pos.setVal(2, k);
+        for (int j = lo[1]; j < hi[1]; ++j) {
+          pos.setVal(1, j);
+          for (int i = lo[0]; i < hi[0]; ++i) {
+            pos.setVal(0, i);
+            for (int n = 0; n < NDIMS; ++n) {
+              lindex = CLindex(i, j, k, NDIMS, dims, n);
+              u(pos, n) = initial_velocity.at(lindex);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    amrex::Abort("Only level 0 should be initialised from scratch currently.");
   }
 
   return;
@@ -207,6 +277,19 @@ void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArr
   velocity[level].define(ba, dm, NDIMS, 0);
   dist_fn[level].define(ba, dm, NMODES, HALO_DEPTH);
 
+  time_steps.at(level) = time;
+
+  // copy user-defined initial values to MultiFabs
+  std::cout << "Ready to init MultiFabs" << std::endl;
+  InitDensity(level);
+  std::cout << "Density MF initialised" << std::endl;
+  InitVelocity(level);
+  std::cout << "Velocity MF initialised" << std::endl;
+
+  // Calculate distribution function from initial density and velocity
+  CalcEquilibriumDist(level);
+  std::cout << "Dist Fn initialised" << std::endl;
+
   return;
 }
 
@@ -214,7 +297,10 @@ void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArra
 
 void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) { return; }
 
-void AmrSim::ClearLevel(int level) { return; }
+void AmrSim::ClearLevel(int level) {
+  std::cout << "Trying to clear a level..." << std::endl;
+  return;
+}
 
 AmrSim::AmrSim(int const nx, int const ny, int const nz,
 double const tau_s, double const tau_b, std::array<int,NDIMS>& periodicity,
@@ -222,11 +308,11 @@ amrex::RealBox& domain)
 : AmrCore(&domain, 0, amrex::Vector<int>({AMREX_D_DECL(8,8,8)}), 0),
 NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
 PERIODICITY{ periodicity }, TAU_S(tau_s), TAU_B(tau_b),
-OMEGA_S(1.0/(tau_s+0.5)), OMEGA_B(1.0/(tau_b+0.5)), time_step(1, 0.0),
+OMEGA_S(1.0/(tau_s+0.5)), OMEGA_B(1.0/(tau_b+0.5)), time_steps(1, 0.0),
 idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
             amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
             amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
-phys_domain( domain ), ba_domain(idx_domain), dm(ba_domain)
+phys_domain( domain ), ba_domain(idx_domain)
 {
   // As we don't use ParmParse the base class is initialised with dummy inputs.
   // We set the max grid size, blocking factor distribution map, BoxArray, and
@@ -234,15 +320,13 @@ phys_domain( domain ), ba_domain(idx_domain), dm(ba_domain)
   verbose = 1;
   SetMaxGridSize(amrex::IntVect(AMREX_D_DECL(nx-1,ny-1,nz-1)));
   SetBlockingFactor(amrex::IntVect(AMREX_D_DECL(nx-1,ny-1,nz-1)));
-  SetDistributionMap(0, dm);
   SetBoxArray(0, ba_domain);
   geom.clear();
   // This is done to reset static variables in Geometry
   amrex::Geometry::Finalize();
-  // note: there is a new constructor with RealBox& available in 19.03!
   geom.emplace_back(ba_domain[0], phys_domain, COORD_SYS, PERIODICITY);
 
-  // resize MF vectors
+  // resize vectors
   int num_levels = max_level + 1;
   density.resize(num_levels);
   velocity.resize(num_levels);
@@ -260,17 +344,12 @@ void AmrSim::SetInitialDensity(const std::vector<double> rho_init) {
 }
 
 void AmrSim::SetInitialVelocity(const double u_init) {
-  initial_velocity.assign(NUMEL, u_init);
+  initial_velocity.assign(3*NUMEL, u_init);
   return;
 }
 
 void AmrSim::SetInitialVelocity(const std::vector<double> u_init) {
   initial_velocity = u_init;
-  return;
-}
-
-void AmrSim::InitDistFunc() {
-
   return;
 }
 
@@ -300,18 +379,24 @@ void AmrSim::CalcEquilibriumDist(int const level) {
   double u2[NDIMS], mod_sq, u_cs2[NDIMS], u2_2cs4[NDIMS], uv_cs4, vw_cs4, uw_cs4, mod_sq_2;
   double u[NDIMS], rho, rho_w[NDIMS];
   amrex::IntVect pos(0);
+  amrex::IntVect lo(0);
+  amrex::IntVect hi(0);
 
   for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+    const amrex::Box& box = mfi.validbox();
+    lo = box.smallEnd();
+    hi = box.bigEnd();
+
     amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
     amrex::FArrayBox& fab_density = density.at(level)[mfi];
     amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
 
-    // will need to replace NX/NY/NZ with local domain sizes
-    for (int k = 0; k < NZ; ++k) {
+
+    for (int k = lo[2]; k < hi[2]; ++k) {
       pos.setVal(2, k);
-      for (int j = 0; j < NY; ++j) {
+      for (int j = lo[1]; j < hi[1]; ++j) {
         pos.setVal(1, j);
-        for (int i = 0; i < NX; ++i) {
+        for (int i = lo[0]; i < hi[0]; ++i) {
           pos.setVal(0, i);
 
           // get density and velocity at this point in space
