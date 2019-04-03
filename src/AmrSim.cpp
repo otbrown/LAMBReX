@@ -214,11 +214,11 @@ void AmrSim::InitDensity(int level) {
       lo = box.smallEnd();
       hi = box.bigEnd();
 
-      for (int k = lo[2]; k < hi[2]; ++k) {
+      for (int k = lo[2]; k <= hi[2]; ++k) {
         pos.setVal(2, k);
-        for (int j = lo[1]; j < hi[1]; ++j) {
+        for (int j = lo[1]; j <= hi[1]; ++j) {
           pos.setVal(1, j);
-          for (int i = lo[0]; i < hi[0]; ++i) {
+          for (int i = lo[0]; i <= hi[0]; ++i) {
             pos.setVal(0, i);
             lindex = CLindex(i, j, k, 0, dims, 1);
             rho(pos) = initial_density.at(lindex);
@@ -248,11 +248,11 @@ void AmrSim::InitVelocity(int level) {
       lo = box.smallEnd();
       hi = box.bigEnd();
 
-      for (int k = lo[2]; k < hi[2]; ++k) {
+      for (int k = lo[2]; k <= hi[2]; ++k) {
         pos.setVal(2, k);
-        for (int j = lo[1]; j < hi[1]; ++j) {
+        for (int j = lo[1]; j <= hi[1]; ++j) {
           pos.setVal(1, j);
-          for (int i = lo[0]; i < hi[0]; ++i) {
+          for (int i = lo[0]; i <= hi[0]; ++i) {
             pos.setVal(0, i);
             for (int n = 0; n < NDIMS; ++n) {
               lindex = CLindex(i, j, k, NDIMS, dims, n);
@@ -392,11 +392,11 @@ void AmrSim::CalcEquilibriumDist(int const level) {
     amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
 
 
-    for (int k = lo[2]; k < hi[2]; ++k) {
+    for (int k = lo[2]; k <= hi[2]; ++k) {
       pos.setVal(2, k);
-      for (int j = lo[1]; j < hi[1]; ++j) {
+      for (int j = lo[1]; j <= hi[1]; ++j) {
         pos.setVal(1, j);
-        for (int i = lo[0]; i < hi[0]; ++i) {
+        for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
 
           // get density and velocity at this point in space
