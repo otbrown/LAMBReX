@@ -269,7 +269,10 @@ void AmrSim::InitVelocity(int level) {
   return;
 }
 
-void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) { return; }
+void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) {
+  std::cout << "Trying to estimate error..." << std::endl;
+  return;
+}
 
 void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
   // define MultiFabs
@@ -293,9 +296,15 @@ void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArr
   return;
 }
 
-void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) { return; }
+void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
+  std::cout << "Trying to make a new level from coarse..." << std::endl;
+  return;
+}
 
-void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) { return; }
+void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
+  std::cout << "Trying to remake a level..." << std::endl;
+  return;
+}
 
 void AmrSim::ClearLevel(int level) {
   std::cout << "Trying to clear a level..." << std::endl;
