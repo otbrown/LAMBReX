@@ -33,7 +33,9 @@ private:
   std::vector<double> initial_velocity;
 
   // current time steps
-  std::vector<double> time_steps;
+  std::vector<double> sim_time;
+  std::vector<double> dt;
+  std::vector<int> time_step;
 
   //  AMReX domain specification
   amrex::Box idx_domain;
@@ -48,22 +50,24 @@ private:
   std::vector<amrex::MultiFab> dist_fn;
 
   // member functions
-  int FLindex(const int i, const int j, const int k, const int n,
-              const amrex::IntVect dims) const {
+  int FLindex(int const i, int const j, int const k, int const n,
+              amrex::IntVect const dims) const {
     return (n * dims[0] * dims[1] * dims[2] + k * dims[0] * dims[1]
             + j * dims[0] + i);
   }
-  int CLindex(const int i, const int j, const int k, const int n,
-              const amrex::IntVect dims, const int n_comps) const {
+  int CLindex(int const i, int const j, int const k, int const n,
+              amrex::IntVect const dims, int const n_comps) const {
     return (i * dims[1] * dims[2] * n_comps + j * dims[2] * n_comps
             + k * n_comps + n);
   }
-  void SwapElements(double * const, const int, const int);
-  void UpdateBoundaries(int);
-  void Collide(int);
-  void Propagate(int);
-  void InitDensity(int);
-  void InitVelocity(int);
+  void SwapElements(double * const, int const, int const);
+  void UpdateBoundaries(int const);
+  void Collide(int const);
+  void Propagate(int const);
+  void InitDensity(int const);
+  void InitVelocity(int const);
+  void ComputeDt(int const);
+  void IterateLevel(int const);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
@@ -78,22 +82,20 @@ private:
 public:
   AmrSim(int const, int const, int const, double const, double const,
     std::array<int,NDIMS>&, amrex::RealBox&);
-  double GetTime(int level) const { return time_steps.at(level); }
+  double GetTime(int const level) const { return sim_time.at(level); }
+  int GetTimeStep(int const level) const { return time_step.at(level); }
   std::array<int,NDIMS> GetDims() const {
     return std::array<int,NDIMS>{NX,NY,NZ}; }
-  void SetInitialDensity(const double);
-  void SetInitialDensity(const std::vector<double>);
-  void SetInitialVelocity(const double);
-  void SetInitialVelocity(const std::vector<double>);
+  void SetInitialDensity(double const);
+  void SetInitialDensity(std::vector<double> const);
+  void SetInitialVelocity(double const);
+  void SetInitialVelocity(std::vector<double> const);
   double GetDensity(int const, int const, int const, int const) const;
   double GetVelocity(int const, int const, int const, int const, int const)
     const;
   void CalcEquilibriumDist(int const);
   void CalcHydroVars(int const);
-
-  int Iterate(int const);
-
-  void PrintDensity() const;
+  void Iterate(int const);
 };
 
 #endif

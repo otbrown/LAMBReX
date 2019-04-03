@@ -2,37 +2,43 @@
 #include <array>
 #include "AMRSim.h"
 
-void AmrSim::SwapElements(double * const arr, const int offset_a,
-const int offset_b) {
+void AmrSim::SwapElements(double * const arr, int const offset_a,
+int const offset_b) {
   double tmp = arr[offset_a];
   arr[offset_a] = arr[offset_b];
   arr[offset_b] = tmp;
   return;
 }
 
-void AmrSim::UpdateBoundaries(int level) {
+void AmrSim::UpdateBoundaries(int const level) {
   dist_fn.at(level).FillBoundary(geom[level].periodicity());
   return;
 }
 
-void AmrSim::Collide(int level) {
+void AmrSim::Collide(int const level) {
   amrex::IntVect pos(0);
+  amrex::IntVect lo(0);
+  amrex::IntVect hi(0);
   std::array<double, NMODES> mode;
   double usq, TrS;
   double stress[NMODES][NMODES];
   int a, b, m, p;
 
   for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+    const amrex::Box& box = mfi.validbox();
     amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
     amrex::FArrayBox& fab_density = density.at(level)[mfi];
     amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
 
+    lo = box.smallEnd();
+    hi = box.bigEnd();
+
     // will need to replace NX/NY/NZ with local domain sizes
-    for (int k = 0; k < NZ; ++k) {
+    for (int k = lo[2]; k <= hi[2]; ++k) {
       pos.setVal(2, k);
-      for (int j = 0; j < NY; ++j) {
+      for (int j = lo[1]; j <= hi[1]; ++j) {
         pos.setVal(1, j);
-        for (int i = 0; i < NX; ++i) {
+        for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
 
           for (m = 0; m < NMODES; ++m) {
@@ -120,7 +126,7 @@ void AmrSim::Collide(int level) {
   return;
 }
 
-void AmrSim::Propagate(int level) {
+void AmrSim::Propagate(int const level) {
   // Explanation from subgrid source
   /* The propagation step of the algorithm.
   *
@@ -199,7 +205,7 @@ void AmrSim::Propagate(int level) {
   return;
 }
 
-void AmrSim::InitDensity(int level) {
+void AmrSim::InitDensity(int const level) {
   amrex::IntVect dims(NX, NY, NZ);
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
@@ -233,7 +239,7 @@ void AmrSim::InitDensity(int level) {
   return;
 }
 
-void AmrSim::InitVelocity(int level) {
+void AmrSim::InitVelocity(int const level) {
   amrex::IntVect dims(NX, NY, NZ);
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
@@ -269,6 +275,26 @@ void AmrSim::InitVelocity(int level) {
   return;
 }
 
+void AmrSim::ComputeDt(int const level) {
+  // we will likely need something like this (from AmrCoreAdv) to calculate the
+  // increase in sim time at different refinement levels
+  dt.at(level) = 1.0;
+  return;
+}
+
+void AmrSim::IterateLevel(int const level) {
+  // iterates one level by one time *step*
+  Collide(level);
+  UpdateBoundaries(level);
+  Propagate(level);
+
+  // update time and step count
+  sim_time.at(level) += dt.at(level);
+  time_step.at(level)++;
+
+  return;
+}
+
 void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) {
   std::cout << "Trying to estimate error..." << std::endl;
   return;
@@ -280,7 +306,10 @@ void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArr
   velocity[level].define(ba, dm, NDIMS, 0);
   dist_fn[level].define(ba, dm, NMODES, HALO_DEPTH);
 
-  time_steps.at(level) = time;
+  // set up simulation timings
+  sim_time.at(level) = time;
+  ComputeDt(level);
+  time_step.at(level) = 0;
 
   // copy user-defined initial values to MultiFabs
   std::cout << "Ready to init MultiFabs" << std::endl;
@@ -317,7 +346,8 @@ amrex::RealBox& domain)
 : AmrCore(&domain, 0, amrex::Vector<int>({AMREX_D_DECL(8,8,8)}), 0),
 NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
 PERIODICITY{ periodicity }, TAU_S(tau_s), TAU_B(tau_b),
-OMEGA_S(1.0/(tau_s+0.5)), OMEGA_B(1.0/(tau_b+0.5)), time_steps(1, 0.0),
+OMEGA_S(1.0/(tau_s+0.5)), OMEGA_B(1.0/(tau_b+0.5)), sim_time(1, 0.0),
+dt(1, 0.0), time_step(1, 0),
 idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
             amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
             amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
@@ -509,6 +539,15 @@ void AmrSim::CalcHydroVars(int const level) {
     } // k
   } // MFIter
 
+  return;
+}
+
+void AmrSim::Iterate(int const nsteps) {
+  // once there are multiple levels this will need to handle synchronisation
+  // between them
+  for (int t = 0; t < nsteps; ++t) {
+    IterateLevel(0);
+  }
   return;
 }
 
