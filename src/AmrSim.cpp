@@ -260,7 +260,7 @@ void AmrSim::InitVelocity(int const LEVEL) {
           for (int i = lo[0]; i <= hi[0]; ++i) {
             pos.setVal(0, i);
             for (int n = 0; n < NDIMS; ++n) {
-              lindex = CLindex(i, j, k, NDIMS, dims, n);
+              lindex = CLindex(i, j, k, n, dims, NDIMS);
               u(pos, n) = initial_velocity.at(lindex);
             }
           }
