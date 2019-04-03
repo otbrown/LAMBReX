@@ -33,11 +33,11 @@ void AmrSim::Collide(int const LEVEL) {
     lo = box.smallEnd();
     hi = box.bigEnd();
 
-    for (int k = lo[2]; k <= hi[2]; ++k) {
+    for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
       pos.setVal(2, k);
-      for (int j = lo[1]; j <= hi[1]; ++j) {
+      for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
         pos.setVal(1, j);
-        for (int i = lo[0]; i <= hi[0]; ++i) {
+        for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
           pos.setVal(0, i);
 
           for (m = 0; m < NMODES; ++m) {
@@ -219,11 +219,11 @@ void AmrSim::InitDensity(int const LEVEL) {
       lo = box.smallEnd();
       hi = box.bigEnd();
 
-      for (int k = lo[2]; k <= hi[2]; ++k) {
+      for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
         pos.setVal(2, k);
-        for (int j = lo[1]; j <= hi[1]; ++j) {
+        for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
           pos.setVal(1, j);
-          for (int i = lo[0]; i <= hi[0]; ++i) {
+          for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
             pos.setVal(0, i);
             lindex = CLindex(i, j, k, 0, dims, 1);
             rho(pos) = initial_density.at(lindex);
@@ -253,11 +253,11 @@ void AmrSim::InitVelocity(int const LEVEL) {
       lo = box.smallEnd();
       hi = box.bigEnd();
 
-      for (int k = lo[2]; k <= hi[2]; ++k) {
+      for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
         pos.setVal(2, k);
-        for (int j = lo[1]; j <= hi[1]; ++j) {
+        for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
           pos.setVal(1, j);
-          for (int i = lo[0]; i <= hi[0]; ++i) {
+          for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
             pos.setVal(0, i);
             for (int n = 0; n < NDIMS; ++n) {
               lindex = CLindex(i, j, k, n, dims, NDIMS);
@@ -405,9 +405,9 @@ const int LEVEL) const {
 double AmrSim::GetVelocity(const int i, const int j, const int k,
 const int n, const int LEVEL) const {
   amrex::IntVect pos(i,j,k);
-  for (amrex::MFIter mfi(density.at(LEVEL)); mfi.isValid(); ++mfi) {
-    if (density.at(LEVEL)[mfi].box().contains(pos))
-      return density.at(LEVEL)[mfi](pos, n);
+  for (amrex::MFIter mfi(velocity.at(LEVEL)); mfi.isValid(); ++mfi) {
+    if (velocity.at(LEVEL)[mfi].box().contains(pos))
+      return velocity.at(LEVEL)[mfi](pos, n);
   }
   amrex::Abort("Invalid index to density MultiFab.");
   return -9999.0;
@@ -430,11 +430,11 @@ void AmrSim::CalcEquilibriumDist(int const LEVEL) {
     amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
 
 
-    for (int k = lo[2]; k <= hi[2]; ++k) {
+    for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
       pos.setVal(2, k);
-      for (int j = lo[1]; j <= hi[1]; ++j) {
+      for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
         pos.setVal(1, j);
-        for (int i = lo[0]; i <= hi[0]; ++i) {
+        for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
           pos.setVal(0, i);
 
           // get density and velocity at this point in space
@@ -518,11 +518,11 @@ void AmrSim::CalcHydroVars(int const LEVEL) {
     lo = box.smallEnd();
     hi = box.bigEnd();
 
-    for (int k = lo[2]; k <= hi[2]; ++k) {
+    for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
       pos.setVal(2, k);
-      for (int j = lo[1]; j <= hi[1]; ++j) {
+      for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
         pos.setVal(1, j);
-        for (int i = lo[0]; i <= hi[0]; ++i) {
+        for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
           pos.setVal(0, i);
 
           // it seems like only the first 4 elements of mode are used, even with
