@@ -10,12 +10,12 @@ int const offset_b) {
   return;
 }
 
-void AmrSim::UpdateBoundaries(int const level) {
-  dist_fn.at(level).FillBoundary(geom[level].periodicity());
+void AmrSim::UpdateBoundaries(int const LEVEL) {
+  dist_fn.at(LEVEL).FillBoundary(geom[LEVEL].periodicity());
   return;
 }
 
-void AmrSim::Collide(int const level) {
+void AmrSim::Collide(int const LEVEL) {
   amrex::IntVect pos(0);
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
@@ -24,16 +24,15 @@ void AmrSim::Collide(int const level) {
   double stress[NMODES][NMODES];
   int a, b, m, p;
 
-  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+  for (amrex::MFIter mfi(dist_fn.at(LEVEL)); mfi.isValid(); ++mfi) {
     const amrex::Box& box = mfi.validbox();
-    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
-    amrex::FArrayBox& fab_density = density.at(level)[mfi];
-    amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
+    amrex::FArrayBox& fab_dist_fn = dist_fn.at(LEVEL)[mfi];
+    amrex::FArrayBox& fab_density = density.at(LEVEL)[mfi];
+    amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
 
     lo = box.smallEnd();
     hi = box.bigEnd();
 
-    // will need to replace NX/NY/NZ with local domain sizes
     for (int k = lo[2]; k <= hi[2]; ++k) {
       pos.setVal(2, k);
       for (int j = lo[1]; j <= hi[1]; ++j) {
@@ -126,7 +125,7 @@ void AmrSim::Collide(int const level) {
   return;
 }
 
-void AmrSim::Propagate(int const level) {
+void AmrSim::Propagate(int const LEVEL) {
   // Explanation from subgrid source
   /* The propagation step of the algorithm.
   *
@@ -155,9 +154,9 @@ void AmrSim::Propagate(int const level) {
   double * data;
   amrex::IntVect dims(0);
 
-  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
-    data = dist_fn.at(level)[mfi].dataPtr();
-    dims = dist_fn.at(level)[mfi].length();
+  for (amrex::MFIter mfi(dist_fn.at(LEVEL)); mfi.isValid(); ++mfi) {
+    data = dist_fn.at(LEVEL)[mfi].dataPtr();
+    dims = dist_fn.at(LEVEL)[mfi].length();
 
     // this looping is bad for FAB, but will need to reorder swaps too...
     for (int i = 0; i < dims[0]; ++i) {
@@ -205,17 +204,17 @@ void AmrSim::Propagate(int const level) {
   return;
 }
 
-void AmrSim::InitDensity(int const level) {
+void AmrSim::InitDensity(int const LEVEL) {
   amrex::IntVect dims(NX, NY, NZ);
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
   amrex::IntVect pos(0);
   int lindex;
 
-  if (!level) {
-    for (amrex::MFIter mfi(density.at(level)); mfi.isValid(); ++mfi) {
+  if (!LEVEL) {
+    for (amrex::MFIter mfi(density.at(LEVEL)); mfi.isValid(); ++mfi) {
       const amrex::Box& box = mfi.validbox();
-      amrex::FArrayBox& rho = density.at(level)[mfi];
+      amrex::FArrayBox& rho = density.at(LEVEL)[mfi];
 
       lo = box.smallEnd();
       hi = box.bigEnd();
@@ -239,17 +238,17 @@ void AmrSim::InitDensity(int const level) {
   return;
 }
 
-void AmrSim::InitVelocity(int const level) {
+void AmrSim::InitVelocity(int const LEVEL) {
   amrex::IntVect dims(NX, NY, NZ);
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
   amrex::IntVect pos(0);
   int lindex;
 
-  if (!level) {
-    for (amrex::MFIter mfi(velocity.at(level)); mfi.isValid(); ++mfi) {
+  if (!LEVEL) {
+    for (amrex::MFIter mfi(velocity.at(LEVEL)); mfi.isValid(); ++mfi) {
       const amrex::Box& box = mfi.validbox();
-      amrex::FArrayBox& u = velocity.at(level)[mfi];
+      amrex::FArrayBox& u = velocity.at(LEVEL)[mfi];
 
       lo = box.smallEnd();
       hi = box.bigEnd();
@@ -269,28 +268,28 @@ void AmrSim::InitVelocity(int const level) {
       }
     }
   } else {
-    amrex::Abort("Only level 0 should be initialised from scratch currently.");
+    amrex::Abort("Only LEVEL 0 should be initialised from scratch currently.");
   }
 
   return;
 }
 
-void AmrSim::ComputeDt(int const level) {
+void AmrSim::ComputeDt(int const LEVEL) {
   // we will likely need something like this (from AmrCoreAdv) to calculate the
-  // increase in sim time at different refinement levels
-  dt.at(level) = 1.0;
+  // increase in sim time at different refinement LEVELs
+  dt.at(LEVEL) = 1.0;
   return;
 }
 
-void AmrSim::IterateLevel(int const level) {
-  // iterates one level by one time *step*
-  Collide(level);
-  UpdateBoundaries(level);
-  Propagate(level);
+void AmrSim::IterateLevel(int const LEVEL) {
+  // iterates one LEVEL by one time *step*
+  Collide(LEVEL);
+  UpdateBoundaries(LEVEL);
+  Propagate(LEVEL);
 
   // update time and step count
-  sim_time.at(level) += dt.at(level);
-  time_step.at(level)++;
+  sim_time.at(LEVEL) += dt.at(LEVEL);
+  time_step.at(LEVEL)++;
 
   return;
 }
@@ -393,42 +392,42 @@ void AmrSim::SetInitialVelocity(const std::vector<double> u_init) {
 }
 
 double AmrSim::GetDensity(const int i, const int j, const int k,
-const int level) const {
+const int LEVEL) const {
   amrex::IntVect pos(i,j,k);
-  for (amrex::MFIter mfi(density.at(level)); mfi.isValid(); ++mfi) {
-    if (density.at(level)[mfi].box().contains(pos))
-      return density.at(level)[mfi](pos);
+  for (amrex::MFIter mfi(density.at(LEVEL)); mfi.isValid(); ++mfi) {
+    if (density.at(LEVEL)[mfi].box().contains(pos))
+      return density.at(LEVEL)[mfi](pos);
   }
   amrex::Abort("Invalid index to density MultiFab.");
   return -1.0;
 }
 
 double AmrSim::GetVelocity(const int i, const int j, const int k,
-const int n, const int level) const {
+const int n, const int LEVEL) const {
   amrex::IntVect pos(i,j,k);
-  for (amrex::MFIter mfi(density.at(level)); mfi.isValid(); ++mfi) {
-    if (density.at(level)[mfi].box().contains(pos))
-      return density.at(level)[mfi](pos, n);
+  for (amrex::MFIter mfi(density.at(LEVEL)); mfi.isValid(); ++mfi) {
+    if (density.at(LEVEL)[mfi].box().contains(pos))
+      return density.at(LEVEL)[mfi](pos, n);
   }
   amrex::Abort("Invalid index to density MultiFab.");
   return -9999.0;
 }
 
-void AmrSim::CalcEquilibriumDist(int const level) {
+void AmrSim::CalcEquilibriumDist(int const LEVEL) {
   double u2[NDIMS], mod_sq, u_cs2[NDIMS], u2_2cs4[NDIMS], uv_cs4, vw_cs4, uw_cs4, mod_sq_2;
   double u[NDIMS], rho, rho_w[NDIMS];
   amrex::IntVect pos(0);
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
 
-  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+  for (amrex::MFIter mfi(dist_fn.at(LEVEL)); mfi.isValid(); ++mfi) {
     const amrex::Box& box = mfi.validbox();
     lo = box.smallEnd();
     hi = box.bigEnd();
 
-    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
-    amrex::FArrayBox& fab_density = density.at(level)[mfi];
-    amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
+    amrex::FArrayBox& fab_dist_fn = dist_fn.at(LEVEL)[mfi];
+    amrex::FArrayBox& fab_density = density.at(LEVEL)[mfi];
+    amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
 
 
     for (int k = lo[2]; k <= hi[2]; ++k) {
@@ -499,25 +498,31 @@ void AmrSim::CalcEquilibriumDist(int const level) {
     } // k
   } // MultiFabIter
 
-  UpdateBoundaries(level);
+  UpdateBoundaries(LEVEL);
 
   return;
 }
 
-void AmrSim::CalcHydroVars(int const level) {
+void AmrSim::CalcHydroVars(int const LEVEL) {
   amrex::IntVect pos(0);
+  amrex::IntVect lo(0);
+  amrex::IntVect hi(0);
   std::array<double, NMODES> mode;
 
-  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
-    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
-    amrex::FArrayBox& fab_density = density.at(level)[mfi];
-    amrex::FArrayBox& fab_velocity = velocity.at(level)[mfi];
+  for (amrex::MFIter mfi(dist_fn.at(LEVEL)); mfi.isValid(); ++mfi) {
+    const amrex::Box& box = mfi.validbox();
+    amrex::FArrayBox& fab_dist_fn = dist_fn.at(LEVEL)[mfi];
+    amrex::FArrayBox& fab_density = density.at(LEVEL)[mfi];
+    amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
 
-    for (int k = 0; k < NZ; ++k) {
+    lo = box.smallEnd();
+    hi = box.bigEnd();
+
+    for (int k = lo[2]; k <= hi[2]; ++k) {
       pos.setVal(2, k);
-      for (int j = 0; j < NY; ++j) {
+      for (int j = lo[1]; j <= hi[1]; ++j) {
         pos.setVal(1, j);
-        for (int i = 0; i < NX; ++i) {
+        for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
 
           // it seems like only the first 4 elements of mode are used, even with
