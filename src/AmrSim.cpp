@@ -311,15 +311,11 @@ void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArr
   time_step.at(level) = 0;
 
   // copy user-defined initial values to MultiFabs
-  std::cout << "Ready to init MultiFabs" << std::endl;
   InitDensity(level);
-  std::cout << "Density MF initialised" << std::endl;
   InitVelocity(level);
-  std::cout << "Velocity MF initialised" << std::endl;
 
   // Calculate distribution function from initial density and velocity
   CalcEquilibriumDist(level);
-  std::cout << "Dist Fn initialised" << std::endl;
 
   return;
 }
