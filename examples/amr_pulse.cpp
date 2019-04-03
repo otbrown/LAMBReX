@@ -1,6 +1,9 @@
 #include <iostream>
 #include "lambrex.h"
 
+void printDensity(const AmrSim&);
+void printVelocity(const AmrSim&);
+
 int main (int argc, char * argv[])
 {
   const int nx = 10;
@@ -34,15 +37,72 @@ int main (int argc, char * argv[])
   {
     amrex::RealBox domain(AMREX_D_DECL(0.0,0.0,0.0), AMREX_D_DECL(1.0,1.0,1.0));
     AmrSim lbrx(nx, ny, nz, tau, tau, periodicity, domain);
-    std::cout << "Initialised lbrx" << std::endl;
     lbrx.SetInitialDensity(rho_0);
-    std::cout << "Set initial density" << std::endl;
     lbrx.SetInitialVelocity(u_0);
-    std::cout << "Set initial velocity" << std::endl;
     lbrx.InitFromScratch(0.0);
-    std::cout << "Initialised lbrx MultiFabs" << std::endl;
+
+    printDensity(lbrx);
+    printVelocity(lbrx);
+    lbrx.Iterate(100);
+    lbrx.CalcHydroVars(0);
+    printDensity(lbrx);
+    printVelocity(lbrx);
+    lbrx.Iterate(100);
+    lbrx.CalcHydroVars(0);
+    printDensity(lbrx);
+    printVelocity(lbrx);
   }
-  amrex::Finalize();
+    amrex::Finalize();
 
   return 0;
+}
+
+void printDensity(const AmrSim& sim) {
+  const std::array<int,NDIMS> DIMS = sim.GetDims();
+  const int NUMEL = DIMS[0] * DIMS[1] * DIMS[2];
+  const int LEVEL = 0;
+  std::cout.precision(6);
+
+  std::cout << "Time: " << sim.GetTime(LEVEL) << std::endl;
+  std::cout << "Density:\n{ ";
+  for (int k = 0; k < DIMS[2]; ++k) {
+    for (int j = 0; j < DIMS[1]; ++j) {
+      for (int i = 0; i < DIMS[0]; ++i) {
+        if (k*DIMS[0]*DIMS[1] + j*DIMS[0] + i < NUMEL-1) {
+          std::cout << sim.GetDensity(i, j, k, LEVEL) << ", ";
+        } else {
+          std::cout << sim.GetDensity(i, j, k, LEVEL) << " };";
+        }
+      }
+    }
+  }
+  std::cout << std::endl;
+
+  return;
+}
+
+void printVelocity(const AmrSim& sim) {
+  const std::array<int,NDIMS> DIMS = sim.GetDims();
+  const int NUMEL = DIMS[0] * DIMS[1] * DIMS[2] * NDIMS;
+  std::cout.precision(6);
+  const int LEVEL = 0;
+
+  std::cout << "Time step: " << sim.GetTimeStep(LEVEL) << std::endl;
+  std::cout << "Velocity:\n{ ";
+  for (int k = 0; k < DIMS[2]; ++k) {
+    for (int j = 0; j < DIMS[1]; ++j) {
+      for (int i = 0; i < DIMS[0]; ++i) {
+        for (int n = 0; n < NDIMS; ++n) {
+          if (n*DIMS[0]*DIMS[1]*DIMS[2] + k*DIMS[0]*DIMS[1] + j*DIMS[0] + i < NUMEL-1) {
+            std::cout << sim.GetVelocity(i, j, k, n, LEVEL) << ", ";
+          } else {
+            std::cout << sim.GetVelocity(i, j, k, n, LEVEL) << " };";
+          }
+        }
+      }
+    }
+  }
+  std::cout << std::endl;
+
+  return;
 }
