@@ -33,11 +33,11 @@ void AmrSim::Collide(int const LEVEL) {
     lo = box.smallEnd();
     hi = box.bigEnd();
 
-    for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
+    for (int k = lo[2]; k <= hi[2]; ++k) {
       pos.setVal(2, k);
-      for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
+      for (int j = lo[1]; j <= hi[1]; ++j) {
         pos.setVal(1, j);
-        for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
+        for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
 
           for (m = 0; m < NMODES; ++m) {
@@ -209,6 +209,7 @@ void AmrSim::InitDensity(int const LEVEL) {
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
   amrex::IntVect pos(0);
+  amrex::IntVect pos_oob(0);
   int lindex;
 
   if (!LEVEL) {
@@ -230,6 +231,49 @@ void AmrSim::InitDensity(int const LEVEL) {
           }
         }
       }
+
+      // deal with possibly empty boundary cells
+      if (NX < hi[0]) {
+        pos.setVal(0, NX);
+        pos_oob.setVal(0, hi[0]);
+        for (int j = lo[1]; j <= hi[1]; ++j) {
+          pos.setVal(1, j);
+          pos_oob.setVal(1, j);
+          for (int k = lo[2]; k <= hi[2]; ++k) {
+            pos.setVal(2, k);
+            pos_oob.setVal(2, k);
+            rho(pos_oob) = rho(pos);
+          }
+        }
+      }
+
+      if (NY < hi[1]) {
+        pos.setVal(1, NY);
+        pos_oob.setVal(1, hi[1]);
+        for (int i = lo[0]; i <= hi[0]; ++i) {
+          pos.setVal(0, i);
+          pos_oob.setVal(0, i);
+          for (int k = lo[2]; k <= hi[2]; ++k) {
+            pos.setVal(2, k);
+            pos_oob.setVal(2, k);
+            rho(pos_oob) = rho(pos);
+          }
+        }
+      }
+
+      if (NZ < hi[2]) {
+        pos.setVal(2, NZ);
+        pos_oob.setVal(2, hi[2]);
+        for (int i = lo[0]; i <= hi[0]; ++i) {
+          pos.setVal(0, i);
+          pos_oob.setVal(0, i);
+          for (int j = lo[1]; j <= hi[1]; ++j) {
+            pos.setVal(1, j);
+            pos_oob.setVal(1, j);
+            rho(pos_oob) = rho(pos);
+          }
+        }
+      }
     }
   } else {
     amrex::Abort("Only level 0 should be initialised from scratch currently.");
@@ -243,6 +287,7 @@ void AmrSim::InitVelocity(int const LEVEL) {
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
   amrex::IntVect pos(0);
+  amrex::IntVect pos_oob(0);
   int lindex;
 
   if (!LEVEL) {
@@ -263,6 +308,49 @@ void AmrSim::InitVelocity(int const LEVEL) {
               lindex = CLindex(i, j, k, n, dims, NDIMS);
               u(pos, n) = initial_velocity.at(lindex);
             }
+          }
+        }
+      }
+
+      // deal with possibly empty boundary cells
+      if (NX < hi[0]) {
+        pos.setVal(0, NX);
+        pos_oob.setVal(0, hi[0]);
+        for (int j = lo[1]; j <= hi[1]; ++j) {
+          pos.setVal(1, j);
+          pos_oob.setVal(1, j);
+          for (int k = lo[2]; k <= hi[2]; ++k) {
+            pos.setVal(2, k);
+            pos_oob.setVal(2, k);
+            for (int n = 0; n < NDIMS; ++n) u(pos_oob, n) = u(pos, n);
+          }
+        }
+      }
+
+      if (NY < hi[1]) {
+        pos.setVal(1, NY);
+        pos_oob.setVal(1, hi[1]);
+        for (int i = lo[0]; i <= hi[0]; ++i) {
+          pos.setVal(0, i);
+          pos_oob.setVal(0, i);
+          for (int k = lo[2]; k <= hi[2]; ++k) {
+            pos.setVal(2, k);
+            pos_oob.setVal(2, k);
+            for (int n = 0; n < NDIMS; ++n) u(pos_oob, n) = u(pos, n);
+          }
+        }
+      }
+
+      if (NZ < hi[2]) {
+        pos.setVal(2, NZ);
+        pos_oob.setVal(2, hi[2]);
+        for (int i = lo[0]; i <= hi[0]; ++i) {
+          pos.setVal(0, i);
+          pos_oob.setVal(0, i);
+          for (int j = lo[1]; j <= hi[1]; ++j) {
+            pos.setVal(1, j);
+            pos_oob.setVal(1, j);
+            for (int n = 0; n < NDIMS; ++n) u(pos_oob, n) = u(pos, n);
           }
         }
       }
@@ -426,11 +514,11 @@ void AmrSim::CalcEquilibriumDist(int const LEVEL) {
     amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
 
 
-    for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
+    for (int k = lo[2]; k <= hi[2]; ++k) {
       pos.setVal(2, k);
-      for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
+      for (int j = lo[1]; j <= hi[1]; ++j) {
         pos.setVal(1, j);
-        for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
+        for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
 
           // get density and velocity at this point in space
@@ -514,11 +602,11 @@ void AmrSim::CalcHydroVars(int const LEVEL) {
     lo = box.smallEnd();
     hi = box.bigEnd();
 
-    for (int k = lo[2]; k <= hi[2] && k < NZ; ++k) {
+    for (int k = lo[2]; k <= hi[2]; ++k) {
       pos.setVal(2, k);
-      for (int j = lo[1]; j <= hi[1] && j < NY; ++j) {
+      for (int j = lo[1]; j <= hi[1]; ++j) {
         pos.setVal(1, j);
-        for (int i = lo[0]; i <= hi[0] && i < NX; ++i) {
+        for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
 
           // it seems like only the first 4 elements of mode are used, even with
