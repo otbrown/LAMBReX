@@ -10,10 +10,9 @@ TEST_CASE("Single Value Initialisation", "[initialisation]")
   const int TEST_NY = 12;
   const int TEST_NZ = 13;
   const int LEVEL = 0;
-  std::array<int,NDIMS> periodicity({1,1,1});
-  amrex::RealBox domain(AMREX_D_DECL(0.0,0.0,0.0), AMREX_D_DECL(1.0,1.0,1.0));
 
-  AmrSim sim(TEST_NX, TEST_NY, TEST_NZ, 0.01, 0.01, periodicity, domain);
+  lambrexSetAmr(TEST_NX, TEST_NY, TEST_NZ, LEVEL);
+  AmrSim sim(0.01, 0.01);
   sim.SetInitialDensity(TEST_DENSITY);
   sim.SetInitialVelocity(TEST_VELOCITY);
   sim.InitFromScratch(0.0);
@@ -55,10 +54,8 @@ TEST_CASE("Element-wise Initialisation", "[initialisation]")
   const int TEST_NZ = 8;
   const int NUMEL = TEST_NX * TEST_NY * TEST_NZ;
   const int LEVEL = 0;
-  std::array<int,NDIMS> periodicity({1,1,1});
   std::vector<double> init_density(NUMEL);
   std::vector<double> init_velocity(3*NUMEL);
-  amrex::RealBox domain(AMREX_D_DECL(0.0,0.0,0.0), AMREX_D_DECL(1.0,1.0,1.0));
   double val;
 
   val = 0.0;
@@ -71,7 +68,8 @@ TEST_CASE("Element-wise Initialisation", "[initialisation]")
     element = val++;
   }
 
-  AmrSim sim(TEST_NX, TEST_NY, TEST_NZ, 0.01, 0.01, periodicity, domain);
+  lambrexSetAmr(TEST_NX, TEST_NY, TEST_NZ, LEVEL);
+  AmrSim sim(0.01, 0.01);
   sim.SetInitialDensity(init_density);
   sim.SetInitialVelocity(init_velocity);
   sim.InitFromScratch(0.0);

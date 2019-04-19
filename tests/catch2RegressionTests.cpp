@@ -11,11 +11,9 @@ TEST_CASE("pulse Regression", "[regression]")
   const int NUMEL = NX*NY*NZ;
   const double TAU = 0.5;
   double amplitude = 0.01;
-  std::array<int,3> periodicity = {1, 1, 1};
   double z_mean;
   int i, j, k, n, rhodex, veldex;
   const int LEVEL = 0;
-  amrex::RealBox domain(AMREX_D_DECL(0.0,0.0,0.0), AMREX_D_DECL(1.0,1.0,1.0));
 
   // initial density
   std::vector<double> rho_0(NUMEL, 1.0);
@@ -35,7 +33,8 @@ TEST_CASE("pulse Regression", "[regression]")
   double u_0 = 0.0;
 
   // initialise AmrSim
-  AmrSim sim(NX, NY, NZ, TAU, TAU, periodicity, domain);
+  lambrexSetAmr(NX, NY, NZ, LEVEL);
+  AmrSim sim(TAU, TAU);
   sim.SetInitialDensity(rho_0);
   sim.SetInitialVelocity(u_0);
   sim.InitFromScratch(0.0);

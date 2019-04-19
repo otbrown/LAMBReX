@@ -12,13 +12,12 @@ struct AMReXListener : Catch::TestEventListenerBase {
   ~AMReXListener();
 
   virtual void testRunStarting(Catch::TestRunInfo const& testRunInfo) override {
-    int argc = 0;
-    char **argv;
-    amrex::Initialize(argc, argv, false);
+    std::array<int,NDIMS> periodicity({1,1,1});
+    lambrexInit(periodicity);
   }
 
   virtual void testRunEnded(Catch::TestRunStats const& testRunStats) override {
-    amrex::Finalize();
+    lambrexFinalise();
   }
 };
 
