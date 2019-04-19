@@ -12,6 +12,7 @@ int main (int argc, char * argv[])
   const double tau = 0.5;
   double amplitude = 0.01;
   std::array<int,3> periodicity = {1, 1, 1};
+  const int max_level = 0;
   const int numel = nx * ny * nz;
   int i, j, k;
   double z_mean;
@@ -33,10 +34,10 @@ int main (int argc, char * argv[])
   // initial velocity
   double u_0 = 0.0;
 
-  amrex::Initialize(argc, argv, false);
+  lambrexInit(periodicity);
+  lambrexSetAmr(nx, ny, nz, max_level);
   {
-    amrex::RealBox domain(AMREX_D_DECL(0.0,0.0,0.0), AMREX_D_DECL(1.0,1.0,1.0));
-    AmrSim lbrx(nx, ny, nz, tau, tau, periodicity, domain);
+    AmrSim lbrx(tau, tau);
     lbrx.SetInitialDensity(rho_0);
     lbrx.SetInitialVelocity(u_0);
     lbrx.InitFromScratch(0.0);
@@ -52,7 +53,7 @@ int main (int argc, char * argv[])
     printDensity(lbrx);
     printVelocity(lbrx);
   }
-    amrex::Finalize();
+  lambrexFinalise();
 
   return 0;
 }
