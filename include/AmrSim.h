@@ -37,11 +37,6 @@ private:
   std::vector<double> dt;
   std::vector<int> time_step;
 
-  //  AMReX domain specification
-  amrex::Box idx_domain;
-  amrex::RealBox phys_domain;
-  amrex::BoxArray ba_domain;
-
   // hydrodynamic variables (output arrays)
   std::vector<amrex::MultiFab> density;
   std::vector<amrex::MultiFab> velocity;
@@ -80,8 +75,7 @@ private:
   void ClearLevel(int) override;
 
 public:
-  AmrSim(int const, int const, int const, double const, double const,
-    std::array<int,NDIMS>&, amrex::RealBox&);
+  AmrSim(double const, double const);
   double GetTime(int const level) const { return sim_time.at(level); }
   int GetTimeStep(int const level) const { return time_step.at(level); }
   std::array<int,NDIMS> GetDims() const {

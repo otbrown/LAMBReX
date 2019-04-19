@@ -423,31 +423,14 @@ void AmrSim::ClearLevel(int level) {
   return;
 }
 
-AmrSim::AmrSim(int const nx, int const ny, int const nz,
-double const tau_s, double const tau_b, std::array<int,NDIMS>& periodicity,
-amrex::RealBox& domain)
-: AmrCore(&domain, 0, amrex::Vector<int>({AMREX_D_DECL(8,8,8)}), 0),
-NX(nx), NY(ny), NZ(nz), NUMEL(nx*ny*nz), COORD_SYS(0),
-PERIODICITY{ periodicity }, TAU_S(tau_s), TAU_B(tau_b),
-OMEGA_S(1.0/(tau_s+0.5)), OMEGA_B(1.0/(tau_b+0.5)), sim_time(1, 0.0),
-dt(1, 0.0), time_step(1, 0),
-idx_domain( amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
-            amrex::IntVect(AMREX_D_DECL(nx-1, ny-1, nz-1)),
-            amrex::IndexType( {AMREX_D_DECL(0, 0, 0)} ) ),
-phys_domain( domain ), ba_domain(idx_domain)
+AmrSim::AmrSim(double const tau_s, double const tau_b)
+  : NX(geom[0].Domain().length(0)), NY(geom[0].Domain().length(1)),
+    NZ(geom[0].Domain().length(2)), NUMEL(NX*NY*NZ), COORD_SYS(0),
+    PERIODICITY{ geom[0].period(0), geom[0].period(1), geom[0].period(2) },
+    TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
+    OMEGA_B(1.0/(tau_b+0.5)), sim_time(1, 0.0), dt(1, 0.0), time_step(1, 0)
 {
-  // As we don't use ParmParse the base class is initialised with dummy inputs.
-  // We set the max grid size, blocking factor distribution map, BoxArray, and
-  // geometry here...
-  verbose = 1;
-  SetMaxGridSize(amrex::IntVect(AMREX_D_DECL(nx-1,ny-1,nz-1)));
-  SetBlockingFactor(amrex::IntVect(AMREX_D_DECL(nx-1,ny-1,nz-1)));
-  SetBoxArray(0, ba_domain);
-  geom.clear();
-  // This is done to reset static variables in Geometry
-  amrex::Geometry::Finalize();
-  geom.emplace_back(ba_domain[0], phys_domain, COORD_SYS, PERIODICITY);
-
+  std::cout << "NX: " << NX << " NY: " << NY << " NZ: " << NZ << std::endl;
   // resize vectors
   int num_levels = max_level + 1;
   density.resize(num_levels);
