@@ -1,4 +1,4 @@
-add_library(lambrex STATIC AmrSim.cpp)
+add_library(lambrex STATIC lambrex.cpp AmrSim.cpp)
 
 target_compile_features(lambrex PUBLIC cxx_std_11)
 
