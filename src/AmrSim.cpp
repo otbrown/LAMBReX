@@ -419,7 +419,10 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
 }
 
 void AmrSim::ClearLevel(int level) {
-  std::cout << "Trying to clear a level..." << std::endl;
+  density.at(level).clear();
+  velocity.at(level).clear();
+  dist_fn.at(level).clear();
+
   return;
 }
 
