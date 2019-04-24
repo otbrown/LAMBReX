@@ -1,6 +1,8 @@
 #include <iostream>
 #include <array>
 #include "AMRSim.h"
+#include "AMReX_filcc_f.H"
+#include "AMReX_FillPatchUtil.H"
 
 void AmrSim::SwapElements(double * const arr, int const offset_a,
 int const offset_b) {
@@ -382,6 +384,50 @@ void AmrSim::IterateLevel(int const LEVEL) {
   return;
 }
 
+void AmrSim::DistFnFillPatch(const int level, amrex::MultiFab& dest_mf) {
+  // based on AmrCoreAdv::FillPatch from AmrCore tutorial
+  // just selects FillPatchSingleLevel if at level 0, or FillPatchTwoLevels, to
+  // fill from coarser level otherwise
+
+  if(!level) {
+    const amrex::Vector<amrex::MultiFab*> source_mf{&dist_fn[level]};
+    const amrex::Vector<double> source_time{sim_time[level]};
+    amrex::PhysBCFunct<amrex::BndryFuncArray> physbc(geom[level], f_bndry,
+      bfunc);
+
+    amrex::FillPatchSingleLevel(dest_mf, sim_time[level], source_mf,
+      source_time, 0, 0, NMODES, geom[level], physbc, 0);
+  } else {
+    const amrex::Vector<amrex::MultiFab*> coarse_mf{&dist_fn[level-1]};
+    const amrex::Vector<amrex::MultiFab*> fine_mf{&dist_fn[level]};
+    const amrex::Vector<double> coarse_time{sim_time[level-1]};
+    const amrex::Vector<double> fine_time{sim_time[level]};
+    amrex::PhysBCFunct<amrex::BndryFuncArray> coarse_physbc(geom[level-1],
+      f_bndry, bfunc);
+    amrex::PhysBCFunct<amrex::BndryFuncArray> fine_physbc(geom[level],
+      f_bndry, bfunc);
+
+    amrex::FillPatchTwoLevels(dest_mf, sim_time[level], coarse_mf, coarse_time,
+      fine_mf, fine_time, 0, 0, NMODES, geom[level-1], geom[level],
+      coarse_physbc, 0, fine_physbc, 0, refRatio(level-1), mapper, f_bndry, 0);
+  }
+
+  return;
+}
+
+void AmrSim::DistFnFillShim(double * data, const int * lo, const int * hi,
+  const int * dom_lo, const int * dom_hi, const double * dx,
+  const double * grd_lo, const double * time, const int * bc) {
+  const int nq = NMODES;
+  // if you look at the call stack in the tutorial this looks like it shouldn't
+  // work as bc is an int not an array, but operator() is overloaded in
+  // amrex::BndryFuncArray
+
+  amrex_fab_filcc(data, lo, hi, &nq, dom_lo, dom_hi, dx, grd_lo, bc);
+
+  return;
+}
+
 void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) {
   std::cout << "Trying to estimate error..." << std::endl;
   return;
@@ -414,7 +460,26 @@ void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArra
 }
 
 void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
-  std::cout << "Trying to remake a level..." << std::endl;
+  amrex::MultiFab new_rho(ba, dm, 1, 0);
+  amrex::MultiFab new_u(ba, dm, NDIMS, 0);
+  amrex::MultiFab new_f(ba, dm, NMODES, HALO_DEPTH);
+
+  // fill new distribution function with (possibly interpolated data) from old
+  // one
+  DistFnFillPatch(level, new_f);
+
+  // swap new MFs in, swapping ensures old ones are appropriately destructed at
+  // the return of this function
+  std::swap(new_f, dist_fn[level]);
+  std::swap(new_rho, density[level]);
+  std::swap(new_u, velocity[level]);
+
+  // update boundaries of distribution function
+  UpdateBoundaries(level);
+
+  // calculate hydrodynamic variables on this level using new dist_fn
+  CalcHydroVars(level);
+
   return;
 }
 
@@ -431,7 +496,8 @@ AmrSim::AmrSim(double const tau_s, double const tau_b)
     NZ(geom[0].Domain().length(2)), NUMEL(NX*NY*NZ), COORD_SYS(0),
     PERIODICITY{ geom[0].period(0), geom[0].period(1), geom[0].period(2) },
     TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
-    OMEGA_B(1.0/(tau_b+0.5)), sim_time(1, 0.0), dt(1, 0.0), time_step(1, 0)
+    OMEGA_B(1.0/(tau_b+0.5)), bfunc(DistFnFillShim), sim_time(1, 0.0), dt(1, 0.0),
+    time_step(1, 0)
 {
   std::cout << "NX: " << NX << " NY: " << NY << " NZ: " << NZ << std::endl;
   // resize vectors
@@ -439,6 +505,18 @@ AmrSim::AmrSim(double const tau_s, double const tau_b)
   density.resize(num_levels);
   velocity.resize(num_levels);
   dist_fn.resize(num_levels);
+  f_bndry.resize(NMODES);
+
+  for (int i = 0; i < NDIMS; ++i) {
+    if (PERIODICITY[i]) {
+      for (int comp = 0; comp < NMODES; ++comp) {
+        f_bndry[comp].setLo(i, amrex::BCType::int_dir);
+        f_bndry[comp].setHi(i, amrex::BCType::int_dir);
+      }
+    } else {
+      amrex::Abort("Currently only periodic boundary conditions allowed.");
+    }
+  }
 };
 
 void AmrSim::SetInitialDensity(const double rho_init) {

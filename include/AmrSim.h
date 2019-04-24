@@ -3,6 +3,9 @@
 
 #include "AMReX_AmrCore.H"
 #include "AMReX_MultiFab.H"
+#include "AMReX_BCRec.H"
+#include "AMReX_PhysBCFunct.H"
+#include "AMReX_Interpolater.H"
 
 // number of spatial dimensions and velocities are model dependent
 // and cannot be changed (for now)
@@ -31,6 +34,16 @@ private:
   static const double MODE_MATRIX_INVERSE[NMODES][NMODES];
   std::vector<double> initial_density;
   std::vector<double> initial_velocity;
+
+  // boundary conditions (in AMReX format)
+  // at the moment we only allow periodic boundary conditions
+  amrex::Vector<amrex::BCRec> f_bndry;
+  const amrex::BndryFuncArray bfunc;
+
+  // address of interpolator to use between coarse and fine grids
+  // these are constructed as globals by AMReX...
+  // cell_cons_interp : cell conservative linear interpolation
+  amrex::Interpolater * mapper = &amrex::cell_cons_interp;
 
   // current time steps
   std::vector<double> sim_time;
@@ -63,6 +76,9 @@ private:
   void InitVelocity(int const);
   void ComputeDt(int const);
   void IterateLevel(int const);
+  void DistFnFillPatch(int const, amrex::MultiFab&);
+  static void DistFnFillShim(double *, const int *, const int *, const int *, const int *,
+    const double *, const double *, const double *, const int *);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
