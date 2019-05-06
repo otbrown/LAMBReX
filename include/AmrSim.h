@@ -76,9 +76,10 @@ private:
   void InitVelocity(int const);
   void ComputeDt(int const);
   void IterateLevel(int const);
-  void DistFnFillPatch(int const, amrex::MultiFab&);
   static void DistFnFillShim(double *, const int *, const int *, const int *, const int *,
     const double *, const double *, const double *, const int *);
+  void DistFnFillPatch(int const, amrex::MultiFab&);
+  void DistFnFillFromCoarse(int const, amrex::MultiFab&);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;

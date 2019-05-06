@@ -384,6 +384,19 @@ void AmrSim::IterateLevel(int const LEVEL) {
   return;
 }
 
+void AmrSim::DistFnFillShim(double * data, const int * lo, const int * hi,
+  const int * dom_lo, const int * dom_hi, const double * dx,
+  const double * grd_lo, const double * time, const int * bc) {
+  const int nq = NMODES;
+  // if you look at the call stack in the tutorial this looks like it shouldn't
+  // work as bc is an int not an array, but operator() is overloaded in
+  // amrex::BndryFuncArray
+
+  amrex_fab_filcc(data, lo, hi, &nq, dom_lo, dom_hi, dx, grd_lo, bc);
+
+  return;
+}
+
 void AmrSim::DistFnFillPatch(const int level, amrex::MultiFab& dest_mf) {
   // based on AmrCoreAdv::FillPatch from AmrCore tutorial
   // just selects FillPatchSingleLevel if at level 0, or FillPatchTwoLevels, to
@@ -415,15 +428,22 @@ void AmrSim::DistFnFillPatch(const int level, amrex::MultiFab& dest_mf) {
   return;
 }
 
-void AmrSim::DistFnFillShim(double * data, const int * lo, const int * hi,
-  const int * dom_lo, const int * dom_hi, const double * dx,
-  const double * grd_lo, const double * time, const int * bc) {
-  const int nq = NMODES;
-  // if you look at the call stack in the tutorial this looks like it shouldn't
-  // work as bc is an int not an array, but operator() is overloaded in
-  // amrex::BndryFuncArray
+void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
+  // Again based on AmrCore tutorial, this time AmrCoreAdv::FillCoarsePatch
+  // fills the distribution function multifab at the specified level from the
+  // level above
+  // Different from FillPatchTwoLevels which does some sort of rough temporal
+  // interpolatation too, apparently...
+  if (!level) amrex::Abort("Cannot fill level 0 from coarse.");
 
-  amrex_fab_filcc(data, lo, hi, &nq, dom_lo, dom_hi, dx, grd_lo, bc);
+  amrex::PhysBCFunct<amrex::BndryFuncArray> coarse_physbc(geom[level-1],
+    f_bndry, bfunc);
+  amrex::PhysBCFunct<amrex::BndryFuncArray> fine_physbc(geom[level],
+    f_bndry, bfunc);
+
+  amrex::InterpFromCoarseLevel(fine_mf, sim_time[level], dist_fn[level-1], 0, 0,
+    NMODES, geom[level-1], geom[level], coarse_physbc, 0, fine_physbc, 0,
+    refRatio(level-1), mapper, f_bndry, 0);
 
   return;
 }
