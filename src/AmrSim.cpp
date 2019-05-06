@@ -475,7 +475,27 @@ void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArr
 }
 
 void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
-  std::cout << "Trying to make a new level from coarse..." << std::endl;
+  if (!level) amrex::Abort("Cannot make construct level 0 from a coarser level.");
+
+  // define MultiFabs
+  density[level].define(ba, dm, 1, 0);
+  velocity[level].define(ba, dm, NDIMS, 0);
+  dist_fn[level].define(ba, dm, NMODES, HALO_DEPTH);
+
+  // set up simulation timings
+  sim_time.at(level) = time;
+  ComputeDt(level);
+  time_step.at(level) = 0;
+
+  // fill distribution function MF with data interpolated from coarse level
+  DistFnFillFromCoarse(level, dist_fn.at(level));
+
+  // update boundary conditions
+  UpdateBoundaries(level);
+
+  // calculate hydrodynamic variables at this level
+  CalcHydroVars(level);
+
   return;
 }
 
