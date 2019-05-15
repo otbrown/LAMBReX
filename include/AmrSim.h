@@ -80,6 +80,7 @@ private:
     const double *, const double *, const double *, const int *);
   void DistFnFillPatch(int const, amrex::MultiFab&);
   void DistFnFillFromCoarse(int const, amrex::MultiFab&);
+  bool TagCell(const amrex::FArrayBox&, const amrex::IntVect&);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;

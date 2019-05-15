@@ -448,8 +448,41 @@ void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
   return;
 }
 
+bool AmrSim::TagCell(const amrex::FArrayBox& f, const amrex::IntVect& pos) {
+  // should this cell be tagged for refinement?
+  // for now the answer is always no.
+  return false;
+}
+
 void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) {
-  std::cout << "Trying to estimate error..." << std::endl;
+  // implements control logic for levels which require refinement
+  amrex::IntVect pos;
+  amrex::IntVect lo;
+  amrex::IntVect hi;
+
+  for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
+    const amrex::Box& box = mfi.validbox();
+    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
+    amrex::TagBox& tagfab = tba[mfi];
+
+    lo = box.smallEnd();
+    hi = box.bigEnd();
+
+    for (int k = lo[2]; k <= hi[2]; ++k) {
+      pos.setVal(2, k);
+      for (int j = lo[1]; j <= hi[1]; ++j) {
+        pos.setVal(1, j);
+        for (int i = lo[0]; i <= hi[0]; ++i) {
+          pos.setVal(0, i);
+          if (TagCell(fab_dist_fn, pos)) {
+            // tag the cell for refinement
+            tagfab(pos) = amrex::TagBox::SET;
+          } else tagfab(pos) = amrex::TagBox::CLEAR;
+        }
+      }
+    }
+  }
+
   return;
 }
 
