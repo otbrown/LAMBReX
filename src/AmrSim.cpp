@@ -508,7 +508,7 @@ void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArr
 }
 
 void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
-  if (!level) amrex::Abort("Cannot make construct level 0 from a coarser level.");
+  if (!level) amrex::Abort("Cannot construct level 0 from a coarser level.");
 
   // define MultiFabs
   density[level].define(ba, dm, 1, 0);
