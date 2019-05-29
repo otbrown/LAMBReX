@@ -13,3 +13,11 @@ add_executable(
 
 target_link_libraries(c2RegressionTests Catch2::Catch2 lambrex)
 catch_discover_tests(c2RegressionTests)
+
+add_executable(
+  c2AMRTests
+  catch2Main.cpp catch2AMRTests.cpp AmrTest.cpp
+)
+
+target_link_libraries(c2AMRTests Catch2::Catch2 lambrex)
+catch_discover_tests(c2AMRTests)
