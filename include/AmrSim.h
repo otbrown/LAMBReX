@@ -13,7 +13,7 @@
 #define NMODES 15
 
 class AmrSim : public amrex::AmrCore {
-private:
+protected:
   // physical dimensions of the outer domain
   const int NX;
   const int NY;
@@ -82,7 +82,6 @@ private:
   void DistFnFillFromCoarse(int const, amrex::MultiFab&);
   bool TagCell(const amrex::FArrayBox&, const amrex::IntVect&);
 
-protected:
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
   void MakeNewLevelFromScratch(int, double, const amrex::BoxArray&,
