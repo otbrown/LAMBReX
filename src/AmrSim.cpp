@@ -561,6 +561,10 @@ void AmrSim::ClearLevel(int level) {
   velocity.at(level).clear();
   dist_fn.at(level).clear();
 
+  sim_time.at(level) = 0.0;
+  dt.at(level) = 0.0;
+  time_step.at(level) = 0;
+
   return;
 }
 
