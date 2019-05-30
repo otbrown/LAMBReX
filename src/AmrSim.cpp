@@ -583,6 +583,9 @@ AmrSim::AmrSim(double const tau_s, double const tau_b)
   velocity.resize(num_levels);
   dist_fn.resize(num_levels);
   f_bndry.resize(NMODES);
+  sim_time.resize(num_levels);
+  dt.resize(num_levels);
+  time_step.resize(num_levels);
 
   for (int i = 0; i < NDIMS; ++i) {
     if (PERIODICITY[i]) {
