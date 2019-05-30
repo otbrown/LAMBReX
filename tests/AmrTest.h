@@ -4,12 +4,23 @@
 #include "AmrSim.h"
 
 class AmrTest : public AmrSim {
-  using AmrSim::AmrSim;
-
 public:
-  bool DensityEmpty(const int level) { return density.at(level).empty(); }
-  bool VelocityEmpty(const int level) { return velocity.at(level).empty(); }
-  bool DistFnEmpty(const int level) { return dist_fn.at(level).empty(); }
+  using AmrSim::AmrSim;
+  using AmrSim::GetDensity;
+  using AmrSim::GetVelocity;
+  using AmrSim::GetTimeStep;
+
+  bool DensityEmpty(const int level) const { return density.at(level).empty(); }
+  bool VelocityEmpty(const int level) const { return velocity.at(level).empty(); }
+  bool DistFnEmpty(const int level) const { return dist_fn.at(level).empty(); }
+
+  std::vector<amrex::MultiFab>& GetDensity() { return density; };
+  std::vector<amrex::MultiFab>& GetVelocity() { return velocity; };
+  std::vector<amrex::MultiFab>& GetDistFn() { return dist_fn; };
+  std::vector<double>& GetSimTime() { return sim_time; }
+  std::vector<double>& GetDt() { return dt; }
+  std::vector<int>& GetTimeStep() { return time_step; }
+
   void CallErrorEst(int const, amrex::TagBoxArray&);
   void CallMakeNewLevelFromScratch(const amrex::BoxArray&,
                                    const amrex::DistributionMapping&,

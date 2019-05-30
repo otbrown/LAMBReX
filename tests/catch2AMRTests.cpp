@@ -105,3 +105,47 @@ TEST_CASE("OneLevel", "[AMR]")
     }
   }
 }
+
+TEST_CASE("TwoLevel", "[AMR]") {
+  const int NX = 48;
+  const int NY = 24;
+  const int NZ = 12;
+  const int MAX_LEVEL = 1;
+  const int NUM_LEVELS = MAX_LEVEL + 1;
+  const double DENSITY = 0.8;
+  const double VELOCITY = 0.1;
+  const double TAU = 0.01;
+
+  lambrexSetAmr(NX, NY, NZ, MAX_LEVEL);
+  AmrTest sim(TAU, TAU);
+
+  sim.SetInitialDensity(DENSITY);
+  sim.SetInitialVelocity(VELOCITY);
+  sim.InitFromScratch(0.0);
+
+  SECTION("Initialisation") {
+    REQUIRE(sim.maxLevel() == MAX_LEVEL);
+    REQUIRE(sim.GetDensity().size() == NUM_LEVELS);
+    REQUIRE(sim.GetVelocity().size() == NUM_LEVELS);
+    REQUIRE(sim.GetDistFn().size() == NUM_LEVELS);
+    REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
+    REQUIRE(sim.GetDt().size() == NUM_LEVELS);
+    REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
+
+    // refinement ratio size is NUM_LEVELS-1, since only has meaning "between"
+    // levels. Default is 2 in every direction, we don't change this yet.
+    REQUIRE(sim.refRatio().size() == MAX_LEVEL);
+    for (int level = 1; level < NUM_LEVELS; ++level) {
+      for (int dim = 0; dim < NDIMS; ++dim)
+        REQUIRE(sim.refRatio(level-1)[dim] == 2);
+    }
+
+    REQUIRE_FALSE(sim.DensityEmpty(0));
+    REQUIRE_FALSE(sim.VelocityEmpty(0));
+    REQUIRE_FALSE(sim.DistFnEmpty(0));
+
+    REQUIRE(sim.DensityEmpty(MAX_LEVEL));
+    REQUIRE(sim.VelocityEmpty(MAX_LEVEL));
+    REQUIRE(sim.DistFnEmpty(MAX_LEVEL));
+  }
+}
