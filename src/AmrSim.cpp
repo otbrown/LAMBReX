@@ -497,12 +497,14 @@ void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArr
   ComputeDt(level);
   time_step.at(level) = 0;
 
-  // copy user-defined initial values to MultiFabs
-  InitDensity(level);
-  InitVelocity(level);
-
-  // Calculate distribution function from initial density and velocity
-  CalcEquilibriumDist(level);
+  // Only try and fill the level if this is the coarsest level
+  if (!level) {
+    // copy user-defined initial values to MultiFabs
+    InitDensity(level);
+    InitVelocity(level);
+    // Calculate distribution function from initial density and velocity
+    CalcEquilibriumDist(level);
+  }
 
   return;
 }
