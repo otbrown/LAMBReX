@@ -549,6 +549,9 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
   std::swap(new_rho, density[level]);
   std::swap(new_u, velocity[level]);
 
+  // update sim time
+  sim_time.at(level) = time;
+
   // update boundaries of distribution function
   UpdateBoundaries(level);
 
