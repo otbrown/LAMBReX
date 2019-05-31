@@ -66,7 +66,7 @@ TEST_CASE("OneLevel", "[AMR]")
     const amrex::DistributionMapping dm(sim.DistributionMap(LEVEL));
 
     sim.CallClearLevel(LEVEL);
-    sim.CallMakeNewLevelFromScratch(ba, dm, TIME);
+    sim.CallMakeNewLevelFromScratch(LEVEL, ba, dm, TIME);
 
     REQUIRE_FALSE(sim.DensityEmpty(LEVEL));
     REQUIRE_FALSE(sim.VelocityEmpty(LEVEL));
@@ -86,7 +86,7 @@ TEST_CASE("OneLevel", "[AMR]")
   }
 
   SECTION("RemakeLevel") {
-    const double TIME = sim.GetTime(LEVEL);
+    const double TIME = 2.5;
     const amrex::BoxArray ba(sim.boxArray(LEVEL));
     const amrex::DistributionMapping dm(sim.DistributionMap(LEVEL));
 
@@ -94,6 +94,7 @@ TEST_CASE("OneLevel", "[AMR]")
 
     // This is a tougher test than it appears, as density and velocity are
     // recalculated from the distribution function
+    REQUIRE(sim.GetTime(LEVEL) == TIME);
     for (int k = 0; k < NZ; ++k) {
       for (int j = 0; j < NY; ++j) {
         for (int i = 0; i < NX; ++i) {
@@ -147,5 +148,158 @@ TEST_CASE("TwoLevel", "[AMR]") {
     REQUIRE(sim.DensityEmpty(MAX_LEVEL));
     REQUIRE(sim.VelocityEmpty(MAX_LEVEL));
     REQUIRE(sim.DistFnEmpty(MAX_LEVEL));
+  }
+
+  SECTION("MakeNewLevelFromCoarse") {
+    // use box array and distribution mapping from level 0
+    const amrex::BoxArray ba(sim.boxArray(0));
+    const amrex::DistributionMapping dm(sim.DistributionMap(0));
+
+    for (int level = 1; level <= MAX_LEVEL; ++level) {
+      sim.CallMakeNewLevelFromCoarse(level, ba, dm);
+    }
+
+    for (int level = 0; level <= MAX_LEVEL; ++level)
+      REQUIRE_FALSE(sim.DensityEmpty(level));
+
+    for (int level = 0; level <= MAX_LEVEL; ++level) {
+      REQUIRE(sim.GetTime(level) == 0.0);
+      for (int k = 0; k < NZ; ++k) {
+        for (int j = 0; j < NY; ++j) {
+          for (int i = 0; i < NX; ++i) {
+            REQUIRE(sim.GetDensity(i, j, k, level) == Approx(DENSITY));
+            for (int dim = 0; dim < NDIMS; ++dim)
+              REQUIRE(sim.GetVelocity(i, j, k, dim, level) == Approx(VELOCITY));
+          }
+        }
+      }
+    }
+  }
+
+  SECTION("ClearLevel") {
+    int level;
+
+    // make sure there is something to clear on each level
+    const amrex::BoxArray ba(sim.boxArray(0));
+    const amrex::DistributionMapping dm(sim.DistributionMap(0));
+    for (level = 1; level <= MAX_LEVEL; ++level)
+      sim.CallMakeNewLevelFromCoarse(level, ba, dm);
+
+    // now clear them
+    for (level = 0; level <= MAX_LEVEL; ++level) sim.CallClearLevel(level);
+
+    for (level = 0; level <= MAX_LEVEL; ++level) {
+      REQUIRE(sim.DensityEmpty(level));
+      REQUIRE(sim.VelocityEmpty(level));
+      REQUIRE(sim.DistFnEmpty(level));
+      REQUIRE(sim.GetTime(level) == 0.0);
+      REQUIRE(sim.GetTimeStep(level) == 0);
+    }
+  }
+
+  SECTION("ErrorEst") {
+    int level;
+    amrex::IntVect pos, lo, hi;
+    const amrex::BoxArray ba(sim.boxArray(0));
+    const amrex::DistributionMapping dm(sim.DistributionMap(0));
+
+    for (level = 1; level <= MAX_LEVEL; ++level)
+      sim.CallMakeNewLevelFromCoarse(level, ba, dm);
+
+    for (level = 0; level <= MAX_LEVEL; ++level) {
+      amrex::TagBoxArray tba(ba, dm);
+      tba.setVal(sim.boxArray(level), amrex::TagBox::SET);
+      sim.CallErrorEst(level, tba);
+
+      // at the moment ErrorEst should always tag every cell as clear (as we don't
+      for (amrex::MFIter mfi(tba); mfi.isValid(); ++mfi) {
+        const amrex::Box& box = mfi.validbox();
+        amrex::TagBox& tagfab = tba[mfi];
+
+        lo = box.smallEnd();
+        hi = box.bigEnd();
+        for (int k = lo[2]; k <= hi[2]; ++k) {
+          pos.setVal(2, k);
+          for (int j = lo[1]; j <= hi[1]; ++j) {
+            pos.setVal(1, j);
+            for (int i = lo[0]; i <= hi[0]; ++i) {
+              pos.setVal(0, i);
+              INFO("(i j k) = (" << i << " " << j << " " << k << ")");
+              REQUIRE(tagfab(pos) == amrex::TagBox::CLEAR);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  SECTION("MakeNewLevelFromScratch") {
+    int level;
+    const double TIME = 1.0;
+    const amrex::BoxArray ba(sim.boxArray(0));
+    const amrex::DistributionMapping dm(sim.DistributionMap(0));
+
+    // empty out sim first
+    for (level = 0; level <= MAX_LEVEL; ++level) sim.CallClearLevel(level);
+
+    // now make new levels
+    for (level = 0; level <= MAX_LEVEL; ++level)
+      sim.CallMakeNewLevelFromScratch(level, ba, dm, TIME);
+
+    // coarsest level should have been fully initialised
+    level = 0;
+    REQUIRE_FALSE(sim.DensityEmpty(level));
+    REQUIRE_FALSE(sim.VelocityEmpty(level));
+    REQUIRE_FALSE(sim.DistFnEmpty(level));
+
+    REQUIRE(sim.GetTime(level) == TIME);
+    REQUIRE(sim.GetTimeStep(level) == 0);
+
+    for (int k = 0; k < NZ; ++k) {
+      for (int j = 0; j < NY; ++j) {
+        for (int i = 0; i < NX; ++i) {
+          REQUIRE(sim.GetDensity(i, j, k, level) == Approx(DENSITY));
+          for (int dim = 0; dim < NDIMS; ++dim)
+            REQUIRE(sim.GetVelocity(i, j, k, dim, level) == Approx(VELOCITY));
+        }
+      }
+    }
+
+    // all other levels should be not empty, but uninitialised
+    for (level = 1; level <= MAX_LEVEL; ++level) {
+      REQUIRE_FALSE(sim.DensityEmpty(level));
+      REQUIRE_FALSE(sim.VelocityEmpty(level));
+      REQUIRE_FALSE(sim.DistFnEmpty(level));
+      REQUIRE(sim.GetTime(level) == TIME);
+      REQUIRE(sim.GetTimeStep(level) == 0);
+    }
+  }
+
+  SECTION("RemakeLevel") {
+    int level;
+    const double TIME = 1.3;
+    const amrex::BoxArray ba(sim.boxArray(0));
+    const amrex::DistributionMapping dm(sim.DistributionMap(0));
+
+    // make sure all levels are initialised
+    for (level = 1; level <= MAX_LEVEL; ++level)
+      sim.CallMakeNewLevelFromCoarse(level, ba, dm);
+
+    // remake all levels and REQUIRE
+    for (level = 0; level <= MAX_LEVEL; ++level)
+      sim.CallRemakeLevel(level, TIME, ba, dm);
+
+    for (level = 0; level <= MAX_LEVEL; ++level) {
+      REQUIRE(sim.GetTime(level) == TIME);
+      for (int k = 0; k < NZ; ++k) {
+        for (int j = 0; j < NY; ++j) {
+          for (int i = 0; i < NX; ++i) {
+            REQUIRE(sim.GetDensity(i, j, k, level) == Approx(DENSITY));
+            for (int dim = 0; dim < NDIMS; ++dim)
+              REQUIRE(sim.GetVelocity(i, j, k, dim, level) == Approx(VELOCITY));
+          }
+        }
+      }
+    }
   }
 }
