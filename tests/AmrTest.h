@@ -22,7 +22,7 @@ public:
   std::vector<int>& GetTimeStep() { return time_step; }
 
   void CallErrorEst(int const, amrex::TagBoxArray&);
-  void CallMakeNewLevelFromScratch(const amrex::BoxArray&,
+  void CallMakeNewLevelFromScratch(const int, const amrex::BoxArray&,
                                    const amrex::DistributionMapping&,
                                    const double);
   void CallMakeNewLevelFromCoarse(const int, const amrex::BoxArray&,

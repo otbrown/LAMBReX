@@ -9,11 +9,9 @@ void AmrTest::CallErrorEst(const int level, amrex::TagBoxArray& tba) {
   return;
 }
 
-void AmrTest::CallMakeNewLevelFromScratch(const amrex::BoxArray& ba,
-const amrex::DistributionMapping& dm, const double time) {
-  // MakeNewLevelFromScratch really only works at level 0,
-  // happily this is also the only place it makes sense...
-  const int level = 0;
+void AmrTest::CallMakeNewLevelFromScratch(const int level,
+  const amrex::BoxArray& ba, const amrex::DistributionMapping& dm,
+  const double time) {
 
   MakeNewLevelFromScratch(level, time, ba, dm);
 
