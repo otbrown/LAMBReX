@@ -631,8 +631,7 @@ const int LEVEL) const {
     if (density.at(LEVEL)[mfi].box().contains(pos))
       return density.at(LEVEL)[mfi](pos);
   }
-  amrex::Abort("Invalid index to density MultiFab.");
-  return -1.0;
+  return NL_DENSITY;
 }
 
 double AmrSim::GetVelocity(const int i, const int j, const int k,
@@ -642,8 +641,7 @@ const int n, const int LEVEL) const {
     if (velocity.at(LEVEL)[mfi].box().contains(pos))
       return velocity.at(LEVEL)[mfi](pos, n);
   }
-  amrex::Abort("Invalid index to density MultiFab.");
-  return -9999.0;
+  return NL_VELOCITY;
 }
 
 void AmrSim::CalcEquilibriumDist(int const LEVEL) {

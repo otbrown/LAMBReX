@@ -25,6 +25,8 @@ protected:
   // model parameters
   constexpr static double CS2 = 1.0 / 3.0; // speed of sound squared
   constexpr static int HALO_DEPTH = 1;
+  constexpr static double NL_DENSITY = -1.0;
+  constexpr static double NL_VELOCITY = -3E8;
   const double TAU_S; // shear
   const double TAU_B; // bulk
   const double OMEGA_S;
@@ -98,6 +100,8 @@ public:
   int GetTimeStep(int const level) const { return time_step.at(level); }
   std::array<int,NDIMS> GetDims() const {
     return std::array<int,NDIMS>{NX,NY,NZ}; }
+  bool OnProcessDensity(double const rho) const { return rho != NL_DENSITY; }
+  bool OnProcessVelocity(double const u) const { return u != NL_VELOCITY; }
   void SetInitialDensity(double const);
   void SetInitialDensity(std::vector<double> const);
   void SetInitialVelocity(double const);
