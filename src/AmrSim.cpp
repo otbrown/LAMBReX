@@ -795,11 +795,14 @@ void AmrSim::SetStaticRefinement(int const level, const std::array<int, NDIMS>&
 
   static_tags.at(level).define(tag_area);
 
+  regrid(level, GetTime(level));
+
   return;
 }
 
 void AmrSim::UnsetStaticRefinement(int const level) {
   static_tags.at(level).clear();
+  regrid(level, GetTime(level));
   return;
 }
 
