@@ -116,6 +116,8 @@ TEST_CASE("TwoLevel", "[AMR]") {
   const double DENSITY = 0.8;
   const double VELOCITY = 0.1;
   const double TAU = 0.01;
+  const std::array<int,NDIMS> LO_CORNER({0, 0, 0});
+  const std::array<int,NDIMS> HI_CORNER({NX-1, NY-1, NZ-1});
 
   lambrexSetAmr(NX, NY, NZ, MAX_LEVEL);
   AmrTest sim(TAU, TAU);
@@ -202,19 +204,80 @@ TEST_CASE("TwoLevel", "[AMR]") {
     amrex::IntVect pos, lo, hi;
     const amrex::BoxArray ba(sim.boxArray(0));
     const amrex::DistributionMapping dm(sim.DistributionMap(0));
+    std::vector<amrex::TagBoxArray> tba;
 
     for (level = 1; level <= MAX_LEVEL; ++level)
       sim.CallMakeNewLevelFromCoarse(level, ba, dm);
 
     for (level = 0; level <= MAX_LEVEL; ++level) {
-      amrex::TagBoxArray tba(ba, dm);
-      tba.setVal(sim.boxArray(level), amrex::TagBox::SET);
-      sim.CallErrorEst(level, tba);
+      tba.emplace_back(ba, dm);
+      tba.at(level).setVal(sim.boxArray(level), amrex::TagBox::SET);
+      sim.CallErrorEst(level, tba.at(level));
+    }
 
-      // at the moment ErrorEst should always tag every cell as clear (as we don't
-      for (amrex::MFIter mfi(tba); mfi.isValid(); ++mfi) {
+    for (level = 0; level <= MAX_LEVEL; ++level) {
+      // at the moment ErrorEst should always tag every cell as clear
+      for (amrex::MFIter mfi(tba.at(level)); mfi.isValid(); ++mfi) {
         const amrex::Box& box = mfi.validbox();
-        amrex::TagBox& tagfab = tba[mfi];
+        amrex::TagBox& tagfab = tba.at(level)[mfi];
+
+        lo = box.smallEnd();
+        hi = box.bigEnd();
+        for (int k = lo[2]; k <= hi[2]; ++k) {
+          pos.setVal(2, k);
+          for (int j = lo[1]; j <= hi[1]; ++j) {
+            pos.setVal(1, j);
+            for (int i = lo[0]; i <= hi[0]; ++i) {
+              pos.setVal(0, i);
+              INFO("(i j k) = (" << i << " " << j << " " << k << ")");
+              REQUIRE(tagfab(pos) == amrex::TagBox::CLEAR);
+            }
+          }
+        }
+      }
+    }
+
+    // now set a static refinement area...
+    for (level = 0; level < MAX_LEVEL; ++level)
+      sim.SetStaticRefinement(level, LO_CORNER, HI_CORNER);
+
+    // and call ErrorEst
+    for (level = 0; level < MAX_LEVEL; ++level)
+      sim.CallErrorEst(level, tba.at(level));
+
+    // REQUIRE that all tags on all levels except the finest are now SET
+    for (level = 0; level < MAX_LEVEL; ++level) {
+      for (amrex::MFIter mfi(tba.at(level)); mfi.isValid(); ++mfi) {
+        const amrex::Box& box = mfi.validbox();
+        amrex::TagBox& tagfab = tba.at(level)[mfi];
+
+        lo = box.smallEnd();
+        hi = box.bigEnd();
+        for (int k = lo[2]; k <= hi[2]; ++k) {
+          pos.setVal(2, k);
+          for (int j = lo[1]; j <= hi[1]; ++j) {
+            pos.setVal(1, j);
+            for (int i = lo[0]; i <= hi[0]; ++i) {
+              pos.setVal(0, i);
+              INFO("(i j k) = (" << i << " " << j << " " << k << ")");
+              REQUIRE(tagfab(pos) == amrex::TagBox::SET);
+            }
+          }
+        }
+      }
+    }
+
+    // unset static refinements and ErrorEst again
+    for (level = 0; level < MAX_LEVEL; ++level) {
+      sim.UnsetStaticRefinement(level);
+      sim.CallErrorEst(level, tba.at(level));
+    }
+
+    // REQUIRE that all tags on all levels except the finest are CLEAR again
+    for (level = 0; level < MAX_LEVEL; ++level) {
+      for (amrex::MFIter mfi(tba.at(level)); mfi.isValid(); ++mfi) {
+        const amrex::Box& box = mfi.validbox();
+        amrex::TagBox& tagfab = tba.at(level)[mfi];
 
         lo = box.smallEnd();
         hi = box.bigEnd();

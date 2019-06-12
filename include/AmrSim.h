@@ -36,6 +36,7 @@ protected:
   static const double MODE_MATRIX_INVERSE[NMODES][NMODES];
   std::vector<double> initial_density;
   std::vector<double> initial_velocity;
+  std::vector<amrex::BoxArray> static_tags;
 
   // boundary conditions (in AMReX format)
   // at the moment we only allow periodic boundary conditions
@@ -78,11 +79,11 @@ protected:
   void InitVelocity(int const);
   void ComputeDt(int const);
   void IterateLevel(int const);
-  static void DistFnFillShim(double *, const int *, const int *, const int *, const int *,
-    const double *, const double *, const double *, const int *);
+  static void DistFnFillShim(double *, const int *, const int *, const int *,
+    const int *, const double *, const double *, const double *, const int *);
   void DistFnFillPatch(int const, amrex::MultiFab&);
   void DistFnFillFromCoarse(int const, amrex::MultiFab&);
-  bool TagCell(const amrex::FArrayBox&, const amrex::IntVect&);
+  bool TagCell(int const, const amrex::IntVect&);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
@@ -112,6 +113,9 @@ public:
   void CalcEquilibriumDist(int const);
   void CalcHydroVars(int const);
   void Iterate(int const);
+  void SetStaticRefinement(int const, const std::array<int, NDIMS>&,
+    const std::array<int, NDIMS>&);
+  void UnsetStaticRefinement(int const);
 };
 
 #endif

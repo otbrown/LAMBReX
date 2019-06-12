@@ -448,10 +448,10 @@ void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
   return;
 }
 
-bool AmrSim::TagCell(const amrex::FArrayBox& f, const amrex::IntVect& pos) {
+bool AmrSim::TagCell(int const level, const amrex::IntVect& pos) {
   // should this cell be tagged for refinement?
-  // for now the answer is always no.
-  return false;
+  if (static_tags.at(level).contains(pos)) return true;
+  else return false;
 }
 
 void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) {
@@ -462,7 +462,6 @@ void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow
 
   for (amrex::MFIter mfi(dist_fn.at(level)); mfi.isValid(); ++mfi) {
     const amrex::Box& box = mfi.validbox();
-    amrex::FArrayBox& fab_dist_fn = dist_fn.at(level)[mfi];
     amrex::TagBox& tagfab = tba[mfi];
 
     lo = box.smallEnd();
@@ -474,7 +473,7 @@ void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow
         pos.setVal(1, j);
         for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
-          if (TagCell(fab_dist_fn, pos)) {
+          if (TagCell(level, pos)) {
             // tag the cell for refinement
             tagfab(pos) = amrex::TagBox::SET;
           } else tagfab(pos) = amrex::TagBox::CLEAR;
@@ -591,6 +590,7 @@ AmrSim::AmrSim(double const tau_s, double const tau_b)
   sim_time.resize(num_levels);
   dt.resize(num_levels);
   time_step.resize(num_levels);
+  static_tags.resize(num_levels);
 
   for (int i = 0; i < NDIMS; ++i) {
     if (PERIODICITY[i]) {
@@ -784,6 +784,22 @@ void AmrSim::Iterate(int const nsteps) {
   for (int t = 0; t < nsteps; ++t) {
     IterateLevel(0);
   }
+  return;
+}
+
+void AmrSim::SetStaticRefinement(int const level, const std::array<int, NDIMS>&
+  lo_corner, const std::array<int, NDIMS>& hi_corner) {
+  const amrex::IntVect LO(lo_corner.data());
+  const amrex::IntVect HI(hi_corner.data());
+  const amrex::Box tag_area(LO, HI);
+
+  static_tags.at(level).define(tag_area);
+
+  return;
+}
+
+void AmrSim::UnsetStaticRefinement(int const level) {
+  static_tags.at(level).clear();
   return;
 }
 
