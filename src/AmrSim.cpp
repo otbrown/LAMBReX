@@ -782,7 +782,9 @@ void AmrSim::Iterate(int const nsteps) {
   // once there are multiple levels this will need to handle synchronisation
   // between them
   for (int t = 0; t < nsteps; ++t) {
-    IterateLevel(0);
+    for (int level = 0; level <= finest_level; ++level)  {
+      IterateLevel(level);
+    }
   }
   return;
 }
@@ -804,6 +806,18 @@ void AmrSim::UnsetStaticRefinement(int const level) {
   static_tags.at(level).clear();
   regrid(level, GetTime(level));
   return;
+}
+
+std::pair<std::array<int,NDIMS>, std::array<int,NDIMS>>
+AmrSim::GetExtent(int const LEVEL) const {
+  const amrex::Box& domain = dist_fn.at(LEVEL).boxArray().minimalBox();
+  amrex::IntVect lo = domain.smallEnd();
+  amrex::IntVect hi = domain.bigEnd();
+
+  std::array<int,NDIMS> lo_arr{lo[0], lo[1], lo[2]};
+  std::array<int,NDIMS> hi_arr{hi[0], hi[1], hi[2]};
+
+  return std::make_pair(lo_arr, hi_arr);
 }
 
 // static member definitions

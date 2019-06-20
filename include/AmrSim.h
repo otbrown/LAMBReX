@@ -116,6 +116,8 @@ public:
   void SetStaticRefinement(int const, const std::array<int, NDIMS>&,
     const std::array<int, NDIMS>&);
   void UnsetStaticRefinement(int const);
+  std::pair<std::array<int,NDIMS>, std::array<int,NDIMS>> GetExtent(int const)
+  const;
 };
 
 #endif
