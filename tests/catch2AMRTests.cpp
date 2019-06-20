@@ -365,4 +365,42 @@ TEST_CASE("TwoLevel", "[AMR]") {
       }
     }
   }
+
+  SECTION("FineGrids") {
+    const std::array<int,NDIMS> REF_LO{NX/4, NY/4, NZ/4};
+    const std::array<int,NDIMS> REF_HI{3*NX/4, 3*NY/4, 3*NZ/4};
+    int level, ratio, num_pts;
+    amrex::IntVect pos;
+    amrex::Box domain_f, domain_rho, domain_v;
+
+    for (level = 0; level < MAX_LEVEL; ++level) {
+      sim.SetStaticRefinement(level, REF_LO, REF_HI);
+    }
+
+    num_pts = 1;
+    for (int dim = 0; dim < NDIMS; ++dim) num_pts *= REF_HI[dim] - REF_LO[dim];
+
+    ratio = 1;
+    for (level = 0; level <= MAX_LEVEL; ++level) {
+      domain_f = sim.GetDistFn().at(level).boxArray().minimalBox();
+      domain_rho = sim.GetDensity().at(level).boxArray().minimalBox();
+      domain_v = sim.GetVelocity().at(level).boxArray().minimalBox();
+
+      for (int dim = 0; dim < NDIMS; ++dim) pos.setVal(dim, ratio*REF_LO[dim]);
+      REQUIRE(domain_f.contains(pos));
+      REQUIRE(domain_rho.contains(pos));
+      REQUIRE(domain_v.contains(pos));
+
+      for (int dim = 0; dim < NDIMS; ++dim) pos.setVal(dim, ratio*REF_HI[dim]);
+      REQUIRE(domain_f.contains(pos));
+      REQUIRE(domain_rho.contains(pos));
+      REQUIRE(domain_v.contains(pos));
+
+      REQUIRE(domain_f.numPts() >= ratio * ratio * ratio * num_pts);
+      REQUIRE(domain_rho.numPts() >= ratio * ratio * ratio * num_pts);
+      REQUIRE(domain_v.numPts() >= ratio * ratio * ratio * num_pts);
+
+      ratio *= 2;
+    }
+  }
 }
