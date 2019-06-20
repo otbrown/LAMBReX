@@ -37,16 +37,13 @@ void lambrexFinalise(void) {
 
 void lambrexSetAmr(const int nx, const int ny, const int nz,
 const int max_ref_level) {
-  const int blocking_factor = binGCD(nx, binGCD(ny, nz));
-  std::cout << "Blocking factor set to: " << blocking_factor << std::endl;
 
   {
     amrex::ParmParse pp("amr");
     // n_cell determines no. of grid points in every direction
     pp.addarr("n_cell", std::vector<int>({nx, ny, nz}));
     pp.add("max_level", max_ref_level);
-    pp.add("blocking_factor", blocking_factor);
-    pp.add("max_grid_size", 2*blocking_factor);
+    pp.add("blocking_factor", 1);
   }
 
   return;
