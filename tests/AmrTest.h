@@ -20,6 +20,8 @@ public:
   std::vector<double>& GetSimTime() { return sim_time; }
   std::vector<double>& GetDt() { return dt; }
   std::vector<int>& GetTimeStep() { return time_step; }
+  std::vector<double>& GetTauS() { return tau_s; }
+  std::vector<double>& GetTauB() { return tau_b; }
 
   void CallErrorEst(int const, amrex::TagBoxArray&);
   void CallMakeNewLevelFromScratch(const int, const amrex::BoxArray&,

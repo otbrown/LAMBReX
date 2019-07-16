@@ -59,6 +59,9 @@ TEST_CASE("OneLevel", "[AMR]")
     REQUIRE(sim.DistFnEmpty(LEVEL));
     REQUIRE(sim.GetTime(LEVEL) == Approx(0.0));
     REQUIRE(sim.GetTimeStep(LEVEL) == 0);
+    // don't touch relaxation times
+    REQUIRE(sim.GetTauS().at(LEVEL) == Approx(TAU));
+    REQUIRE(sim.GetTauB().at(LEVEL) == Approx(TAU));
   }
 
   SECTION("MakeNewLevelFromScratch") {
@@ -74,6 +77,8 @@ TEST_CASE("OneLevel", "[AMR]")
     REQUIRE_FALSE(sim.DistFnEmpty(LEVEL));
 
     REQUIRE(sim.GetTime(LEVEL) == TIME);
+    REQUIRE(sim.GetTauS().at(LEVEL) == Approx(TAU));
+    REQUIRE(sim.GetTauB().at(LEVEL) == Approx(TAU));
 
     for (int k = 0; k < NZ; ++k) {
       for (int j = 0; j < NY; ++j) {
@@ -96,6 +101,8 @@ TEST_CASE("OneLevel", "[AMR]")
     // This is a tougher test than it appears, as density and velocity are
     // recalculated from the distribution function
     REQUIRE(sim.GetTime(LEVEL) == TIME);
+    REQUIRE(sim.GetTauS().at(LEVEL) == Approx(TAU));
+    REQUIRE(sim.GetTauB().at(LEVEL) == Approx(TAU));
     for (int k = 0; k < NZ; ++k) {
       for (int j = 0; j < NY; ++j) {
         for (int i = 0; i < NX; ++i) {
@@ -143,6 +150,8 @@ TEST_CASE("TwoLevel", "[AMR]") {
     REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
     REQUIRE(sim.GetDt().size() == NUM_LEVELS);
     REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
+    REQUIRE(sim.GetTauS().size() == NUM_LEVELS);
+    REQUIRE(sim.GetTauB().size() == NUM_LEVELS);
 
     REQUIRE_FALSE(sim.DensityEmpty(0));
     REQUIRE_FALSE(sim.VelocityEmpty(0));
@@ -318,6 +327,8 @@ TEST_CASE("TwoLevel", "[AMR]") {
 
     REQUIRE(sim.GetTime(level) == TIME);
     REQUIRE(sim.GetTimeStep(level) == 0);
+    REQUIRE(sim.GetTauS().at(level) == Approx(TAU));
+    REQUIRE(sim.GetTauB().at(level) == Approx(TAU));
 
     for (int k = 0; k < NZ; ++k) {
       for (int j = 0; j < NY; ++j) {
@@ -338,6 +349,10 @@ TEST_CASE("TwoLevel", "[AMR]") {
       REQUIRE(sim.GetTimeStep(level) == 0);
       // check Dt values which should currently be 1/(2^n) for n levels
       REQUIRE(sim.GetDt().at(level) == (1 / std::pow(2.0, level)));
+      REQUIRE(sim.GetTauS().at(level) == Approx(sim.refRatio(level-1)[0]
+        * (sim.GetTauS().at(level-1) - 0.5) + 0.5));
+      REQUIRE(sim.GetTauB().at(level) == Approx(sim.refRatio(level-1)[0]
+        * (sim.GetTauB().at(level-1) - 0.5) + 0.5));
     }
   }
 
