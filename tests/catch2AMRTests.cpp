@@ -1,5 +1,6 @@
 #include <catch2/catch.hpp>
 #include <limits>
+#include <cmath>
 #include "lambrex.h"
 #include "AmrTest.h"
 #include <cstdio>
@@ -127,14 +128,6 @@ TEST_CASE("TwoLevel", "[AMR]") {
   sim.InitFromScratch(0.0);
 
   SECTION("Initialisation") {
-    REQUIRE(sim.maxLevel() == MAX_LEVEL);
-    REQUIRE(sim.GetDensity().size() == NUM_LEVELS);
-    REQUIRE(sim.GetVelocity().size() == NUM_LEVELS);
-    REQUIRE(sim.GetDistFn().size() == NUM_LEVELS);
-    REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
-    REQUIRE(sim.GetDt().size() == NUM_LEVELS);
-    REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
-
     // refinement ratio size is NUM_LEVELS-1, since only has meaning "between"
     // levels. Default is 2 in every direction, we don't change this yet.
     REQUIRE(sim.refRatio().size() == MAX_LEVEL);
@@ -142,6 +135,14 @@ TEST_CASE("TwoLevel", "[AMR]") {
       for (int dim = 0; dim < NDIMS; ++dim)
         REQUIRE(sim.refRatio(level-1)[dim] == 2);
     }
+
+    REQUIRE(sim.maxLevel() == MAX_LEVEL);
+    REQUIRE(sim.GetDensity().size() == NUM_LEVELS);
+    REQUIRE(sim.GetVelocity().size() == NUM_LEVELS);
+    REQUIRE(sim.GetDistFn().size() == NUM_LEVELS);
+    REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
+    REQUIRE(sim.GetDt().size() == NUM_LEVELS);
+    REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
 
     REQUIRE_FALSE(sim.DensityEmpty(0));
     REQUIRE_FALSE(sim.VelocityEmpty(0));
@@ -335,6 +336,8 @@ TEST_CASE("TwoLevel", "[AMR]") {
       REQUIRE_FALSE(sim.DistFnEmpty(level));
       REQUIRE(sim.GetTime(level) == TIME);
       REQUIRE(sim.GetTimeStep(level) == 0);
+      // check Dt values which should currently be 1/(2^n) for n levels
+      REQUIRE(sim.GetDt().at(level) == (1 / std::pow(2.0, level)));
     }
   }
 
