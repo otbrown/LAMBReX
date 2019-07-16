@@ -79,6 +79,7 @@ protected:
   void InitVelocity(int const);
   void ComputeDt(int const);
   void IterateLevel(int const);
+  void SubCycle(int const, int const);
   static void DistFnFillShim(double *, const int *, const int *, const int *,
     const int *, const double *, const double *, const double *, const int *);
   void DistFnFillPatch(int const, amrex::MultiFab&);

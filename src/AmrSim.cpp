@@ -365,9 +365,13 @@ void AmrSim::InitVelocity(int const LEVEL) {
 }
 
 void AmrSim::ComputeDt(int const LEVEL) {
-  // we will likely need something like this (from AmrCoreAdv) to calculate the
-  // increase in sim time at different refinement LEVELs
-  dt.at(LEVEL) = 1.0;
+  // dt_0 = 1
+  // dt_n = (1/(r_n)) dt_(n-1)
+  // this clearly requires dt to be defined already at LEVEL-1, but this should
+  // always be the case, and there's no way around it unless we assume it's
+  // constant. Which to be fair, it is.
+  if (LEVEL) dt.at(LEVEL) = dt.at(LEVEL-1) / refRatio(LEVEL-1)[0];
+  else dt.at(LEVEL) = 1.0;
   return;
 }
 
@@ -380,6 +384,17 @@ void AmrSim::IterateLevel(int const LEVEL) {
   // update time and step count
   sim_time.at(LEVEL) += dt.at(LEVEL);
   time_step.at(LEVEL)++;
+
+  return;
+}
+
+void AmrSim::SubCycle(int const BASE_LEVEL, int const NUM_STEPS) {
+  if (BASE_LEVEL == finest_level)
+    for (int iter = 0; iter < NUM_STEPS; ++iter) IterateLevel(BASE_LEVEL);
+  else {
+    IterateLevel(BASE_LEVEL);
+    SubCycle(BASE_LEVEL+1, refRatio(BASE_LEVEL)[0]);
+  }
 
   return;
 }
@@ -781,11 +796,11 @@ void AmrSim::CalcHydroVars(int const LEVEL) {
 void AmrSim::Iterate(int const nsteps) {
   // once there are multiple levels this will need to handle synchronisation
   // between them
+
   for (int t = 0; t < nsteps; ++t) {
-    for (int level = 0; level <= finest_level; ++level)  {
-      IterateLevel(level);
-    }
+    SubCycle(0, 1);
   }
+
   return;
 }
 
