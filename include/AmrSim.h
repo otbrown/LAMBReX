@@ -27,10 +27,6 @@ protected:
   constexpr static int HALO_DEPTH = 1;
   constexpr static double NL_DENSITY = -1.0;
   constexpr static double NL_VELOCITY = -3E8;
-  const double TAU_S; // shear
-  const double TAU_B; // bulk
-  const double OMEGA_S;
-  const double OMEGA_B;
   static const double DELTA[NDIMS][NDIMS];
   static const double MODE_MATRIX[NMODES][NMODES];
   static const double MODE_MATRIX_INVERSE[NMODES][NMODES];
@@ -48,10 +44,12 @@ protected:
   // cell_cons_interp : cell conservative linear interpolation
   amrex::Interpolater * mapper = &amrex::cell_cons_interp;
 
-  // current time steps
+  // time keeping, constant per level
   std::vector<double> sim_time;
   std::vector<double> dt;
   std::vector<int> time_step;
+  std::vector<double> tau_s;
+  std::vector<double> tau_b;
 
   // hydrodynamic variables (output arrays)
   std::vector<amrex::MultiFab> density;

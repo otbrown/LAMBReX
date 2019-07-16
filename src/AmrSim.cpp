@@ -25,6 +25,8 @@ void AmrSim::Collide(int const LEVEL) {
   double usq, TrS;
   double stress[NMODES][NMODES];
   int a, b, m, p;
+  const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
+  const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
 
   for (amrex::MFIter mfi(dist_fn.at(LEVEL)); mfi.isValid(); ++mfi) {
     const amrex::Box& box = mfi.validbox();
@@ -365,13 +367,24 @@ void AmrSim::InitVelocity(int const LEVEL) {
 }
 
 void AmrSim::ComputeDt(int const LEVEL) {
+  int r = 1;
+  if (LEVEL) r = refRatio(LEVEL-1)[0];
+
   // dt_0 = 1
   // dt_n = (1/(r_n)) dt_(n-1)
   // this clearly requires dt to be defined already at LEVEL-1, but this should
   // always be the case, and there's no way around it unless we assume it's
   // constant. Which to be fair, it is.
-  if (LEVEL) dt.at(LEVEL) = dt.at(LEVEL-1) / refRatio(LEVEL-1)[0];
+  if (LEVEL) dt.at(LEVEL) = dt.at(LEVEL-1) / r;
   else dt.at(LEVEL) = 1.0;
+
+  // tau_0 is initialised in AmrSim constructor
+  // tau_n = r_n(tau_(n-1) - 0.5) + 0.5
+  if (LEVEL) {
+    tau_s.at(LEVEL) = r * (tau_s.at(LEVEL-1) - 0.5) + 0.5;
+    tau_b.at(LEVEL) = r * (tau_b.at(LEVEL-1) - 0.5) + 0.5;
+  }
+
   return;
 }
 
@@ -587,12 +600,11 @@ void AmrSim::ClearLevel(int level) {
   return;
 }
 
-AmrSim::AmrSim(double const tau_s, double const tau_b)
+AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
   : NX(geom[0].Domain().length(0)), NY(geom[0].Domain().length(1)),
     NZ(geom[0].Domain().length(2)), NUMEL(NX*NY*NZ), COORD_SYS(0),
     PERIODICITY{ geom[0].period(0), geom[0].period(1), geom[0].period(2) },
-    TAU_S(tau_s), TAU_B(tau_b), OMEGA_S(1.0/(tau_s+0.5)),
-    OMEGA_B(1.0/(tau_b+0.5)), bfunc(DistFnFillShim), sim_time(1, 0.0), dt(1, 0.0),
+    bfunc(DistFnFillShim), sim_time(1, 0.0), dt(1, 0.0),
     time_step(1, 0)
 {
   std::cout << "NX: " << NX << " NY: " << NY << " NZ: " << NZ << std::endl;
@@ -605,6 +617,8 @@ AmrSim::AmrSim(double const tau_s, double const tau_b)
   sim_time.resize(num_levels);
   dt.resize(num_levels);
   time_step.resize(num_levels);
+  tau_s.resize(num_levels);
+  tau_b.resize(num_levels);
   static_tags.resize(num_levels);
 
   for (int i = 0; i < NDIMS; ++i) {
@@ -617,6 +631,9 @@ AmrSim::AmrSim(double const tau_s, double const tau_b)
       amrex::Abort("Currently only periodic boundary conditions allowed.");
     }
   }
+
+  tau_s.at(0) = tau_s_0;
+  tau_b.at(0) = tau_b_0;
 };
 
 void AmrSim::SetInitialDensity(const double rho_init) {
@@ -771,8 +788,6 @@ void AmrSim::CalcHydroVars(int const LEVEL) {
         for (int i = lo[0]; i <= hi[0]; ++i) {
           pos.setVal(0, i);
 
-          // it seems like only the first 4 elements of mode are used, even with
-          // a force present (which there is not here...)
           for (int m = 0; m < NMODES; ++m) {
             mode[m] = 0.0;
             for (int p = 0; p < NMODES; ++p) {
