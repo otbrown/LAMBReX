@@ -368,21 +368,24 @@ void AmrSim::InitVelocity(int const LEVEL) {
 
 void AmrSim::ComputeDt(int const LEVEL) {
   int r = 1;
-  if (LEVEL) r = refRatio(LEVEL-1)[0];
 
-  // dt_0 = 1
-  // dt_n = (1/(r_n)) dt_(n-1)
+  // dt_0 = 1, m_0 = 1
+  // dt_n = (1/(r_n)) dt_(n-1), m_n = (1/r_n) m_(n-1)
   // this clearly requires dt to be defined already at LEVEL-1, but this should
   // always be the case, and there's no way around it unless we assume it's
   // constant. Which to be fair, it is.
-  if (LEVEL) dt.at(LEVEL) = dt.at(LEVEL-1) / r;
-  else dt.at(LEVEL) = 1.0;
-
   // tau_0 is initialised in AmrSim constructor
   // tau_n = r_n(tau_(n-1) - 0.5) + 0.5
   if (LEVEL) {
+    r = refRatio(LEVEL-1)[0];
+    dt.at(LEVEL) = dt.at(LEVEL-1) / r;
+    mass.at(LEVEL) = mass.at(LEVEL-1) / r;
     tau_s.at(LEVEL) = r * (tau_s.at(LEVEL-1) - 0.5) + 0.5;
     tau_b.at(LEVEL) = r * (tau_b.at(LEVEL-1) - 0.5) + 0.5;
+  }
+  else {
+    dt.at(LEVEL) = 1.0;
+    mass.at(LEVEL) = 1.0;
   }
 
   return;
@@ -619,6 +622,7 @@ AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
   time_step.resize(num_levels);
   tau_s.resize(num_levels);
   tau_b.resize(num_levels);
+  mass.resize(num_levels);
   static_tags.resize(num_levels);
 
   for (int i = 0; i < NDIMS; ++i) {
@@ -632,6 +636,7 @@ AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
     }
   }
 
+  // initialise relaxation time vectors at level 0
   tau_s.at(0) = tau_s_0;
   tau_b.at(0) = tau_b_0;
 };

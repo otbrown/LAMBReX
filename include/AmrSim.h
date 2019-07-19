@@ -51,6 +51,9 @@ protected:
   std::vector<double> tau_s;
   std::vector<double> tau_b;
 
+  // mass constant per level, may be needed for calculating outputs
+  std::vector<double> mass;
+
   // hydrodynamic variables (output arrays)
   std::vector<amrex::MultiFab> density;
   std::vector<amrex::MultiFab> velocity;
