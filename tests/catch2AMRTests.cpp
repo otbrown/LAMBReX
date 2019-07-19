@@ -152,6 +152,7 @@ TEST_CASE("TwoLevel", "[AMR]") {
     REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
     REQUIRE(sim.GetTauS().size() == NUM_LEVELS);
     REQUIRE(sim.GetTauB().size() == NUM_LEVELS);
+    REQUIRE(sim.GetMass().size() == NUM_LEVELS);
 
     REQUIRE_FALSE(sim.DensityEmpty(0));
     REQUIRE_FALSE(sim.VelocityEmpty(0));
@@ -349,6 +350,7 @@ TEST_CASE("TwoLevel", "[AMR]") {
       REQUIRE(sim.GetTimeStep(level) == 0);
       // check Dt values which should currently be 1/(2^n) for n levels
       REQUIRE(sim.GetDt().at(level) == (1 / std::pow(2.0, level)));
+      REQUIRE(sim.GetMass().at(level) == (1 / std::pow(2.0, level)));
       REQUIRE(sim.GetTauS().at(level) == Approx(sim.refRatio(level-1)[0]
         * (sim.GetTauS().at(level-1) - 0.5) + 0.5));
       REQUIRE(sim.GetTauB().at(level) == Approx(sim.refRatio(level-1)[0]
