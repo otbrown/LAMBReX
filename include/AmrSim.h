@@ -1,3 +1,4 @@
+// -*- mode: c++; -*-
 #ifndef AMRSIM_H
 #define AMRSIM_H
 
@@ -6,6 +7,11 @@
 #include "AMReX_BCRec.H"
 #include "AMReX_PhysBCFunct.H"
 #include "AMReX_Interpolater.H"
+
+#include "velocity_set.h"
+#include "component.h"
+#include "multilevel.h"
+#include "d3q15_bgk.h"
 
 // number of spatial dimensions and velocities are model dependent
 // and cannot be changed (for now)
@@ -44,10 +50,6 @@ protected:
   // cell_cons_interp : cell conservative linear interpolation
   amrex::Interpolater * mapper = &amrex::cell_cons_interp;
 
-  // time keeping, constant per level
-  std::vector<double> sim_time;
-  std::vector<double> dt;
-  std::vector<int> time_step;
   std::vector<double> tau_s;
   std::vector<double> tau_b;
 
@@ -59,7 +61,7 @@ protected:
   std::vector<amrex::MultiFab> velocity;
 
   // distribution function (work array)
-  std::vector<amrex::MultiFab> dist_fn;
+  std::vector<SimLevelData> levels;
 
   // member functions
   int FLindex(int const i, int const j, int const k, int const n,
@@ -99,8 +101,12 @@ protected:
 
 public:
   AmrSim(double const, double const);
-  double GetTime(int const level) const { return sim_time.at(level); }
-  int GetTimeStep(int const level) const { return time_step.at(level); }
+  inline double GetTime(int const level) const {
+    return levels.at(level).time.current;
+  }
+  int GetTimeStep(int const level) const {
+    return levels.at(level).time.step;
+  }
   std::array<int,NDIMS> GetDims() const {
     return std::array<int,NDIMS>{NX,NY,NZ}; }
   bool OnProcessDensity(double const rho) const { return rho != NL_DENSITY; }
