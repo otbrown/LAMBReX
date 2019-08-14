@@ -10,11 +10,11 @@ public:
   using AmrSim::GetVelocity;
   using AmrSim::GetTimeStep;
 
-  bool DensityEmpty(const int level) const { return density.at(level).empty(); }
+  bool DensityEmpty(const int level) const { return levels[level].now.get<Density>().empty(); }
   bool VelocityEmpty(const int level) const { return velocity.at(level).empty(); }
   bool DistFnEmpty(const int level) const { return levels[level].now.get<DistFn>().empty(); }
 
-  std::vector<amrex::MultiFab>& GetDensity() { return density; };
+
   std::vector<amrex::MultiFab>& GetVelocity() { return velocity; };
   inline auto& GetLevels() {
     return levels;
@@ -22,7 +22,7 @@ public:
   inline auto& GetLevel(int l) {
     return levels[l];
   }
-  //std::vector<amrex::MultiFab>& GetDistFn() { return dist_fn; };
+
   inline auto& GetSimTime(int l) {
     return levels[l].time.current;
   }

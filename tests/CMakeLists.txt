@@ -21,3 +21,10 @@ add_executable(
 
 target_link_libraries(c2AMRTests Catch2::Catch2 lambrex)
 catch_discover_tests(c2AMRTests)
+
+add_executable(
+  meta_basic
+  meta_basic.cpp
+  )
+target_link_libraries(meta_basic lambrex)
+

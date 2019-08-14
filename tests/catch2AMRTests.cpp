@@ -144,7 +144,6 @@ TEST_CASE("TwoLevel", "[AMR]") {
     }
 
     REQUIRE(sim.maxLevel() == MAX_LEVEL);
-    REQUIRE(sim.GetDensity().size() == NUM_LEVELS);
     REQUIRE(sim.GetVelocity().size() == NUM_LEVELS);
     //REQUIRE(sim.GetDistFn().size() == NUM_LEVELS);
     //REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
@@ -405,7 +404,7 @@ TEST_CASE("TwoLevel", "[AMR]") {
     for (level = 0; level <= MAX_LEVEL; ++level) {
       const auto& state = sim.GetLevel(level).now;
       domain_f = state.get<DistFn>().boxArray().minimalBox();
-      domain_rho = sim.GetDensity().at(level).boxArray().minimalBox();
+      domain_rho = state.get<Density>().boxArray().minimalBox();
       domain_v = sim.GetVelocity().at(level).boxArray().minimalBox();
 
       for (int dim = 0; dim < NDIMS; ++dim) pos.setVal(dim, ratio*REF_LO[dim]);

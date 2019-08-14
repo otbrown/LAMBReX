@@ -4,6 +4,8 @@
 #include "AMReX_filcc_f.H"
 #include "AMReX_FillPatchUtil.H"
 
+#include "amr_help.h"
+
 void AmrSim::SwapElements(double * const arr, int const offset_a,
 int const offset_b) {
   double tmp = arr[offset_a];
@@ -18,135 +20,99 @@ void AmrSim::UpdateBoundaries(int const LEVEL) {
   return;
 }
 
-void AmrSim::Collide(int const LEVEL) {
+void AmrSim::CollideAndStream(const int LEVEL) {
   const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
   const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
-  const auto& f_old = levels.at(LEVEL).now.get<DistFn>();
-  auto& f_new = levels.at(LEVEL).next.get<DistFn>();
-  for (amrex::MFIter mfi(f_old); mfi.isValid(); ++mfi) {
-    const auto& box = mfi.validbox();
-    const auto& lo = box.smallEnd();
-    const auto& hi = box.bigEnd();
-    const amrex::FArrayBox& fab_f_old = f_old[mfi];
-    amrex::FArrayBox& fab_f_new = f_new[mfi];
-    amrex::FArrayBox& fab_density = density.at(LEVEL)[mfi];
-    amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
+  auto& lvl = levels[LEVEL];
+  const auto& f_old = lvl.now.get<DistFn>();
+  auto f_pc = field_traits<DistFn>::MakeLevelData(f_old.boxArray(), f_old.DistributionMap());
+  for_point_in(f_old, [&](auto accessor) {
 
-
-    for (int k = lo[2]; k <= hi[2]; ++k) {
-      for (int j = lo[1]; j <= hi[1]; ++j) {
-        for (int i = lo[0]; i <= hi[0]; ++i) {
-	  auto pos = amrex::IntVect{i, j, k};
-	  // Will zero initialise the elements of the aggregate
-	  auto mode = std::array<double, DistFn::NV>{};
-          for (int m = 0; m < DistFn::NV; ++m) {
-	    for (int p = 0; p < DistFn::NV; ++p) {
-              mode[m] += fab_f_old(pos,p) * MODE_MATRIX[m][p];
-            }
-          }
-
-          fab_density(pos) = mode[0];
-
-          // no forcing is currently present in the model,
-          // so we disregard uDOTf for now
-          double usq = 0.0;
-          for (int a = 0; a < NDIMS; ++a) {
-            fab_velocity(pos, a) = mode[a+1] / fab_density(pos);
-            usq += fab_velocity(pos, a) * fab_velocity(pos, a);
-          }
-
-	  double stress[NDIMS][NDIMS] = {
-	    {mode[4], mode[5], mode[6]},
-	    {mode[5], mode[7], mode[8]},
-	    {mode[6], mode[8], mode[9]}
-	  };
-
-          // Form the trace
-	  double TrS = 0.0;
-          for (int a = 0; a < NDIMS; ++a) {
-            TrS += stress[a][a];
-          }
-          // Form the traceless part
-          for (int a = 0; a < NDIMS; ++a) {
-            stress[a][a] -= (TrS / NDIMS);
-          }
-
-          // Relax the trace
-          TrS -= OMEGA_B * (TrS - fab_density(pos)*usq);
-          // Relax the traceless part
-          for (int a = 0; a < NDIMS; ++a) {
-            for (int b = 0; b < NDIMS; ++b) {
-              stress[a][b] -= OMEGA_S * (stress[a][b] - fab_density(pos)
-                                      * ( fab_velocity(pos,a)
-                                          * fab_velocity(pos,b)
-                                          - usq * DELTA[a][b]) );
-            }
-            stress[a][a] += (TrS / NDIMS);
-          }
-
-          // copy stress back into mode
-          mode[4] = stress[0][0];
-          mode[5] = stress[0][1];
-          mode[6] = stress[0][2];
-
-          mode[7] = stress[1][1];
-          mode[8] = stress[1][2];
-
-          mode[9] = stress[2][2];
-
-          // Ghosts are relaxed to zero immediately
-          mode[10] = 0.0;
-          mode[11] = 0.0;
-          mode[12] = 0.0;
-          mode[13] = 0.0;
-          mode[14] = 0.0;
-
-          // project back to the velocity basis
-          for (int p = 0; p < NMODES; ++p) {
-            fab_f_new(pos, p) = 0.0;
-            for (int m = 0; m < NMODES; ++m) {
-              fab_f_new(pos, p) += mode[m] * MODE_MATRIX_INVERSE[p][m];
-            }
-          }
-
-        } // i
-      } // j
-    } // k
-  } // MFIter
-
-  return;
-}
-
-void PropBox(const amrex::Box& box, const amrex::FArrayBox& f_pc, amrex::FArrayBox& f_new) {
-  const auto& lo = box.smallEnd();
-  const auto& hi = box.bigEnd();
-  
-  for (int z = lo[2]; z <= hi[2]; ++z)
-    for (int y = lo[1]; y <= hi[1]; ++y)
-      for (int x = lo[0]; x <= hi[0]; ++x) {
-	auto pos = amrex::IntVect{x,y,z};
-
-	// TODO: consider putting loop over components first as arrays are in Fortran order
-	for (int i = 0; i < DistFn::NV; ++i) {
-	  const auto& CI = amrex::IntVect{DistFn::VelocitySet::CI[i]};
-	  // Minus because pull-style propagation
-	  const auto src = pos - CI;
-	  f_new(pos, i) = f_pc(src, i);
+      auto mode = std::array<double, DistFn::NV>{};
+      for (int m = 0; m < DistFn::NV; ++m) {
+	for (int p = 0; p < DistFn::NV; ++p) {
+	  mode[m] += accessor(f_old, p) * MODE_MATRIX[m][p];
 	}
       }
+
+      const auto& density = mode[0];
+
+      // no forcing is currently present in the model,
+      // so we disregard uDOTf for now
+      double velocity[NDIMS];
+      double usq = 0.0;
+      for (int a = 0; a < NDIMS; ++a) {
+	velocity[a] = mode[a+1] / density;
+	usq += velocity[a] * velocity[a];
+      }
+
+      double stress[NDIMS][NDIMS] = {
+	{mode[4], mode[5], mode[6]},
+	{mode[5], mode[7], mode[8]},
+	{mode[6], mode[8], mode[9]}
+      };
+
+      // Form the trace
+      double TrS = 0.0;
+      for (int a = 0; a < NDIMS; ++a) {
+	TrS += stress[a][a];
+      }
+      // Form the traceless part
+      for (int a = 0; a < NDIMS; ++a) {
+	stress[a][a] -= (TrS / NDIMS);
+      }
+
+      // Relax the trace
+      TrS -= OMEGA_B * (TrS - density*usq);
+      // Relax the traceless part
+      for (int a = 0; a < NDIMS; ++a) {
+	for (int b = 0; b < NDIMS; ++b) {
+	  stress[a][b] -= OMEGA_S * (stress[a][b] - density
+				     * ( velocity[a]
+					 * velocity[b]
+					 - usq * DELTA[a][b]) );
+	}
+	stress[a][a] += (TrS / NDIMS);
+      }
+
+      // copy stress back into mode
+      mode[4] = stress[0][0];
+      mode[5] = stress[0][1];
+      mode[6] = stress[0][2];
+
+      mode[7] = stress[1][1];
+      mode[8] = stress[1][2];
+
+      mode[9] = stress[2][2];
+
+      // Ghosts are relaxed to zero immediately
+      mode[10] = 0.0;
+      mode[11] = 0.0;
+      mode[12] = 0.0;
+      mode[13] = 0.0;
+      mode[14] = 0.0;
+
+      // project back to the velocity basis
+      for (int p = 0; p < NMODES; ++p) {
+	double fp = 0;
+	for (int m = 0; m < NMODES; ++m) {
+	  fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
+	}
+	accessor(f_pc, p) = fp;
+      }
+    });
+
+  f_pc.FillBoundary(geom[LEVEL].periodicity());
+  auto& f_new = lvl.next.get<DistFn>();
+  for_point_in(f_new, [&f_new, &f_pc](const auto& dest) {
+      for (int i = 0; i < DistFn::NV; ++i) {
+	// Minus because pull-style propagation
+	auto src = dest - DistFn::VelocitySet::C[i];
+	dest(f_new, i) = src(f_pc, i);
+      }
+    });
 }
 
-void AmrSim::Propagate(int const LEVEL) {
-  // Collide has filled f_old with relaxed dists, now stream them into f_new
-  auto& f_old = levels.at(LEVEL).now.get<DistFn>();
-  auto& f_new = levels.at(LEVEL).next.get<DistFn>();
-  // First ensure we have our ghost cells filled
-  f_old.FillBoundary(geom[LEVEL].periodicity());
-
-  for (amrex::MFIter mfi(f_new); mfi.isValid(); ++mfi) {
-    PropBox(mfi.validbox(), f_old[mfi], f_new[mfi]);
-  }
-}
 
 void AmrSim::InitDensity(int const LEVEL) {
   amrex::IntVect dims(NX, NY, NZ);
@@ -157,9 +123,10 @@ void AmrSim::InitDensity(int const LEVEL) {
   int lindex;
 
   if (!LEVEL) {
-    for (amrex::MFIter mfi(density.at(LEVEL)); mfi.isValid(); ++mfi) {
+    auto& rho_mf = levels.at(LEVEL).now.get<Density>();
+    for (amrex::MFIter mfi(rho_mf); mfi.isValid(); ++mfi) {
       const amrex::Box& box = mfi.validbox();
-      amrex::FArrayBox& rho = density.at(LEVEL)[mfi];
+      amrex::FArrayBox& rho = rho_mf[mfi];
 
       lo = box.smallEnd();
       hi = box.bigEnd();
@@ -338,10 +305,7 @@ void AmrSim::ComputeDt(int const LEVEL) {
 
 void AmrSim::IterateLevel(int const LEVEL) {
   // iterates one LEVEL by one time *step*
-  Collide(LEVEL);
-  UpdateBoundaries(LEVEL);
-  Propagate(LEVEL);
-
+  CollideAndStream(LEVEL);
   // update time and step count
   auto& time = levels.at(LEVEL).time;
   time.current += time.delta;
@@ -469,7 +433,6 @@ void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow
 void AmrSim::MakeNewLevelFromScratch(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
   auto& lvl = levels[level];
   // define MultiFabs
-  density[level].define(ba, dm, 1, 0);
   velocity[level].define(ba, dm, NDIMS, 0);
   lvl.Define(ba, dm);
 
@@ -495,7 +458,6 @@ void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArra
   if (!level) amrex::Abort("Cannot construct level 0 from a coarser level.");
 
   // define MultiFabs
-  density[level].define(ba, dm, 1, 0);
   velocity[level].define(ba, dm, NDIMS, 0);
   auto& lvl = levels[level];
   lvl.Define(ba, dm);
@@ -517,9 +479,10 @@ void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArra
 }
 
 void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
-  amrex::MultiFab new_rho(ba, dm, 1, 0);
+  //amrex::MultiFab new_rho(ba, dm, 1, 0);
   amrex::MultiFab new_u(ba, dm, NDIMS, 0);
-  auto new_f = DistFn::MakeLevelData(ba,dm);
+  auto new_f = field_traits<DistFn>::MakeLevelData(ba, dm);
+  auto new_rho = field_traits<Density>::MakeLevelData(ba, dm);
   // fill new distribution function with (possibly interpolated data) from old
   // one
   DistFnFillPatch(level, new_f);
@@ -527,8 +490,9 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
   // swap new MFs in, swapping ensures old ones are appropriately destructed at
   // the return of this function
   //std::swap(new_f, dist_fn[level]);
-  std::swap(new_f, levels[level].now.get<DistFn>());
-  std::swap(new_rho, density[level]);
+  auto& state = levels[level].now;
+  std::swap(new_f, state.get<DistFn>());
+  std::swap(new_rho, state.get<Density>());
   std::swap(new_u, velocity[level]);
 
   // update sim time
@@ -544,7 +508,6 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
 }
 
 void AmrSim::ClearLevel(int level) {
-  density.at(level).clear();
   velocity.at(level).clear();
   levels.at(level).Clear();
 
@@ -560,7 +523,6 @@ AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
   std::cout << "NX: " << NX << " NY: " << NY << " NZ: " << NZ << std::endl;
   // resize vectors
   int num_levels = max_level + 1;
-  density.resize(num_levels);
   velocity.resize(num_levels);
   
   f_bndry.resize(NMODES);
@@ -605,12 +567,14 @@ void AmrSim::SetInitialVelocity(const std::vector<double> u_init) {
   return;
 }
 
+// TODO: have this return an optional
 double AmrSim::GetDensity(const int i, const int j, const int k,
 const int LEVEL) const {
   amrex::IntVect pos(i,j,k);
-  for (amrex::MFIter mfi(density.at(LEVEL)); mfi.isValid(); ++mfi) {
-    if (density.at(LEVEL)[mfi].box().contains(pos))
-      return density.at(LEVEL)[mfi](pos);
+  const auto& rho_mf = levels[LEVEL].now.get<Density>();
+  for (amrex::MFIter mfi(rho_mf); mfi.isValid(); ++mfi) {
+    if (rho_mf[mfi].box().contains(pos))
+      return rho_mf[mfi](pos);
   }
   return NL_DENSITY;
 }
@@ -631,15 +595,18 @@ void AmrSim::CalcEquilibriumDist(int const LEVEL) {
   amrex::IntVect pos(0);
   amrex::IntVect lo(0);
   amrex::IntVect hi(0);
-  auto& f = levels[LEVEL].now.get<DistFn>();
+  auto& state = levels[LEVEL].now;
+  auto& f = state.get<DistFn>();
+  const auto& rho = state.get<Density>();
+
   for (amrex::MFIter mfi(f); mfi.isValid(); ++mfi) {
     const auto& box = mfi.validbox();
     const auto& lo = box.smallEnd();
     const auto& hi = box.bigEnd();
 
     amrex::FArrayBox& fab_dist_fn = f[mfi];
-    amrex::FArrayBox& fab_density = density.at(LEVEL)[mfi];
-    amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
+    auto& fab_density = rho[mfi];
+    auto& fab_velocity = velocity.at(LEVEL)[mfi];
 
 
     for (int k = lo[2]; k <= hi[2]; ++k) {
@@ -716,12 +683,14 @@ void AmrSim::CalcEquilibriumDist(int const LEVEL) {
 }
 
 void AmrSim::CalcHydroVars(int const LEVEL) {
-  const auto& f = levels[LEVEL].now.get<DistFn>();
-  
+  auto& state = levels[LEVEL].now;
+  const auto& f = state.get<DistFn>();
+  auto& rho = state.get<Density>();
+
   for (amrex::MFIter mfi(f); mfi.isValid(); ++mfi) {
     const amrex::Box& box = mfi.validbox();
     auto& fab_dist_fn = f[mfi];
-    amrex::FArrayBox& fab_density = density.at(LEVEL)[mfi];
+    auto& fab_density = rho[mfi];
     amrex::FArrayBox& fab_velocity = velocity.at(LEVEL)[mfi];
 
     const auto& lo = box.smallEnd();

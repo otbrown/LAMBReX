@@ -9,6 +9,7 @@
 #include <AMReX_MultiFab.H>
 
 #include "pack_tools.h"
+#include "field.h"
 
 // A single level's time info
 struct TimeData {
@@ -46,11 +47,11 @@ struct State {
   template<typename F>
   void Def(const amrex::BoxArray& ba, const amrex::DistributionMapping& dm) {
     constexpr auto i = t2i_v<F, Fields...>;
-    F::DefineLevelData(fields[i], ba, dm);
+    field_traits<F>::DefineLevelData(fields[i], ba, dm);
   }
   void Clear() {
-    for (auto i = 0U; i < NFIELDS; ++i) {
-      fields[i].clear();
+    for (auto& f: fields) {
+      f.clear();
     }
   }
 };

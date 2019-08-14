@@ -2,6 +2,11 @@
 #ifndef LAMBREX_VELOCITY_SET_H
 #define LAMBREX_VELOCITY_SET_H
 
+#include <array>
+#include <cmath>
+
+#include "range.hpp"
+
 template <typename Int>
 class IdxIterator {
   Int i = 0;
@@ -45,12 +50,22 @@ constexpr bool operator>=(const IdxIterator<Int>& a, const IdxIterator<Int>& b) 
   return !(a < b);
 }
 
+constexpr int kronecker(int a, int b) {
+  return a == b ? 1 : 0;
+}
+
 template <typename Impl, int ND_, int NV_, int HALO_>
 struct VelocitySet {
   static constexpr int ND = ND_;
   static constexpr int NV = NV_;
   static constexpr int HALO = HALO_;
+  static constexpr double CS2 = 1.0 / 3.0;
+  static constexpr double CS = std::sqrt(CS2);
+
   using idx_type = std::array<int, ND>;
+  using vector_type = std::array<double, ND>;
+  using matrix_type = std::array<vector_type, ND>;
+
   using indexer = IdxIterator<int>;
 private:
   using derived = Impl;
@@ -63,21 +78,29 @@ private:
   }
 
   static constexpr std::array<idx_type, NV> make_vel_int_array() {
-    std::array<idx_type, NV> ans = {0};
-    for (auto i = 0; i < NV; ++i)
+    std::array<idx_type, NV> ans{};
+    for (auto i: range(NV))
       ans[i] = {derived::CX[i], derived::CY[i],derived::CZ[i]};
     return ans;
   }
-  static constexpr std::array<std::array<double, ND>, NV> make_vel_float_array() {
-    std::array<std::array<double, ND>, NV> ans = {0};
-    for (auto i = 0; i < NV; ++i)
+  static constexpr auto make_vel_float_array() {
+    std::array<vector_type, NV> ans{};
+    for (auto i: range(NV))
       ans[i] = {derived::CX[i], derived::CY[i], derived::CZ[i]};
     return ans;
   }
-  
+  static constexpr auto make_q_array() {
+    std::array<matrix_type, NV> ans{};
+    for (auto i: range(NV))
+      for (auto a: range(ND))
+	for (auto b: range(ND))
+	  ans[i][a][b] = X[i][a]*X[i][b] - CS2 * kronecker(a,b);
+    return ans;
+  }
 public:
-  static constexpr std::array<std::array<int, ND>, NV> CI = make_vel_int_array();
-  static constexpr std::array<std::array<double, ND>, NV> XI = make_vel_float_array();
+  static constexpr std::array<idx_type, NV> C = make_vel_int_array();
+  static constexpr std::array<vector_type, NV> X = make_vel_float_array();
+  static constexpr std::array<matrix_type, NV> Q = make_q_array();
 
   static constexpr indexer index_begin();
   static constexpr indexer index_end();

@@ -57,7 +57,6 @@ protected:
   std::vector<double> mass;
 
   // hydrodynamic variables (output arrays)
-  std::vector<amrex::MultiFab> density;
   std::vector<amrex::MultiFab> velocity;
 
   // distribution function (work array)
@@ -76,8 +75,7 @@ protected:
   }
   void SwapElements(double * const, int const, int const);
   void UpdateBoundaries(int const);
-  void Collide(int const);
-  void Propagate(int const);
+  void CollideAndStream(int level);
   void InitDensity(int const);
   void InitVelocity(int const);
   void ComputeDt(int const);
