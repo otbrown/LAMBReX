@@ -4,7 +4,7 @@ add_executable(
   )
 
 target_link_libraries(c2InitTests Catch2::Catch2 lambrex)
-catch_discover_tests(c2InitTests)
+ParseAndAddCatchTests(c2InitTests)
 
 add_executable(
   c2RegressionTests
@@ -12,7 +12,7 @@ add_executable(
 )
 
 target_link_libraries(c2RegressionTests Catch2::Catch2 lambrex)
-catch_discover_tests(c2RegressionTests)
+ParseAndAddCatchTests(c2RegressionTests)
 
 add_executable(
   c2AMRTests
@@ -20,4 +20,4 @@ add_executable(
 )
 
 target_link_libraries(c2AMRTests Catch2::Catch2 lambrex)
-catch_discover_tests(c2AMRTests)
+ParseAndAddCatchTests(c2AMRTests)
