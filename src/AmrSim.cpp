@@ -105,11 +105,7 @@ void AmrSim::CollideAndStream(const int LEVEL) {
   f_pc.FillBoundary(geom[LEVEL].periodicity());
   auto& f_new = lvl.next.get<DistFn>();
   for_point_in(f_new, [&f_new, &f_pc](const auto& dest) {
-      for (int i = 0; i < DistFn::NV; ++i) {
-	// Minus because pull-style propagation
-	auto src = dest - DistFn::VelocitySet::C[i];
-	dest(f_new, i) = src(f_pc, i);
-      }
+      DistFn::PropagatePoint(dest, f_pc, f_new);
     });
 }
 
