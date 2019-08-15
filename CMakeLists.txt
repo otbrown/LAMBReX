@@ -7,7 +7,7 @@ project(
   )
 
 option(LAMBREX_USE_CONAN "Build dependencies with Conan" ON)
-option(LAMBREX_BUILD_EXAMPLES "Build the tests" ON)
+option(LAMBREX_BUILD_EXAMPLES "Build the examples" OFF)
 option(LAMBREX_BUILD_TESTS "Build the tests" ON)
 
 set(default_build_type "Release")
@@ -23,9 +23,6 @@ endif()
 
 # You may need to set AMREX_DIR to help cmake find the config files
 find_package(AMReX 19.03 REQUIRED)
-if (NOT "${AMREX_DIM}" EQUAL 3)
-  message(FATAL_ERROR "AMReX compiled not for 3D!")
-endif()
 
 add_subdirectory(src)
 if (LAMBREX_BUILD_EXAMPLES)
@@ -39,6 +36,7 @@ if (LAMBREX_BUILD_TESTS)
   enable_testing()
   include(CTest)
   include(Catch)
+  include(ParseAndAddCatchTests)
 
   add_subdirectory(tests)
 endif()
