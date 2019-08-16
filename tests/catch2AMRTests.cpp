@@ -144,12 +144,12 @@ TEST_CASE("TwoLevel", "[AMR]") {
     }
 
     REQUIRE(sim.maxLevel() == MAX_LEVEL);
-    REQUIRE(sim.GetDensity().size() == NUM_LEVELS);
     REQUIRE(sim.GetVelocity().size() == NUM_LEVELS);
-    REQUIRE(sim.GetDistFn().size() == NUM_LEVELS);
-    REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
-    REQUIRE(sim.GetDt().size() == NUM_LEVELS);
-    REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
+    //REQUIRE(sim.GetDistFn().size() == NUM_LEVELS);
+    //REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
+    //REQUIRE(sim.GetDt().size() == NUM_LEVELS);
+    //REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
+    REQUIRE(sim.GetLevels().size() == NUM_LEVELS);
     REQUIRE(sim.GetTauS().size() == NUM_LEVELS);
     REQUIRE(sim.GetTauB().size() == NUM_LEVELS);
     REQUIRE(sim.GetMass().size() == NUM_LEVELS);
@@ -349,7 +349,7 @@ TEST_CASE("TwoLevel", "[AMR]") {
       REQUIRE(sim.GetTime(level) == TIME);
       REQUIRE(sim.GetTimeStep(level) == 0);
       // check Dt values which should currently be 1/(2^n) for n levels
-      REQUIRE(sim.GetDt().at(level) == (1 / std::pow(2.0, level)));
+      REQUIRE(sim.GetDt(level) == (1 / std::pow(2.0, level)));
       REQUIRE(sim.GetMass().at(level) == (1 / std::pow(2.0, level)));
       REQUIRE(sim.GetTauS().at(level) == Approx(sim.refRatio(level-1)[0]
         * (sim.GetTauS().at(level-1) - 0.5) + 0.5));
@@ -402,8 +402,9 @@ TEST_CASE("TwoLevel", "[AMR]") {
 
     ratio = 1;
     for (level = 0; level <= MAX_LEVEL; ++level) {
-      domain_f = sim.GetDistFn().at(level).boxArray().minimalBox();
-      domain_rho = sim.GetDensity().at(level).boxArray().minimalBox();
+      const auto& state = sim.GetLevel(level).now;
+      domain_f = state.get<DistFn>().boxArray().minimalBox();
+      domain_rho = state.get<Density>().boxArray().minimalBox();
       domain_v = sim.GetVelocity().at(level).boxArray().minimalBox();
 
       for (int dim = 0; dim < NDIMS; ++dim) pos.setVal(dim, ratio*REF_LO[dim]);
