@@ -92,7 +92,7 @@ TEST_CASE("pulse Regression", "[regression]")
   }
 }
 
-TEST_CASE("ml_pulse Regression", "[regression]")
+TEST_CASE("ml_pulse Regression", "[!hide]")
 {
   const int NX = 10;
   const int NY = 10;

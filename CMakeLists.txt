@@ -37,6 +37,7 @@ if (LAMBREX_BUILD_TESTS)
   include(CTest)
   include(Catch)
   include(ParseAndAddCatchTests)
+  set(PARSE_CATCH_TESTS_NO_HIDDEN_TESTS ON)
 
   add_subdirectory(tests)
 endif()
