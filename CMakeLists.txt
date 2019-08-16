@@ -6,8 +6,8 @@ project(
   LANGUAGES CXX
   )
 
-option(LAMBREX_USE_CONAN "Build dependencies with Conan" ON)
-option(LAMBREX_BUILD_EXAMPLES "Build the examples" OFF)
+option(LAMBREX_USE_CONAN "Build dependencies with Conan" OFF)
+option(LAMBREX_BUILD_EXAMPLES "Build the examples" ON)
 option(LAMBREX_BUILD_TESTS "Build the tests" ON)
 
 set(default_build_type "Release")
@@ -22,7 +22,7 @@ if (LAMBREX_USE_CONAN)
 endif()
 
 # You may need to set AMREX_DIR to help cmake find the config files
-find_package(AMReX 19.03 REQUIRED)
+find_package(AMReX 19.08 REQUIRED)
 
 add_subdirectory(src)
 if (LAMBREX_BUILD_EXAMPLES)
