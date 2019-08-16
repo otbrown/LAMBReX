@@ -4,7 +4,7 @@ Lattice Boltzmann code built on AMReX
 ## Build Instructions
 
 ### LAMBReX
-From the home directory create a build directory and cd to it -- for example `mkdir build` followed by `cd build`. Then simply run `cmake ..`, and `make`. `liblambrex.a` can be found in `build/lib`, the binaries for the example calculation and tests can be found in `build/bin`. If using conan for Catch2, please run `conan install ..` before `cmake`.
+From the home directory create a build directory and cd to it -- for example `mkdir build` followed by `cd build`. Then simply run `cmake ..`, and `make`. `liblambrex.a` can be found in `build/src`, the binaries for the example calculation and tests can be found in `build/example` and `build/tests`. You can also just run `make test` to run all tests. If using conan for Catch2, please run `conan install ..` before `cmake`.
 
 ### Dependencies
 
