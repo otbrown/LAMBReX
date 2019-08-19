@@ -4,6 +4,7 @@
 
 #include <utility>
 #include <array>
+#include <algorithm>
 
 #include <AMReX_REAL.H>
 #include <AMReX_MultiFab.H>
@@ -19,7 +20,7 @@ struct TimeData {
 };
 
 // Store a single level's fields at a single time instant in a
-// sequence of MultiFabs 
+// sequence of MultiFabs
 template <typename... Fields>
 struct State {
   static constexpr auto NFIELDS = sizeof...(Fields);
@@ -70,6 +71,12 @@ struct LevelData {
     time.current = 0.0;
     time.delta = 0.0;
     time.step = 0;
+  }
+  void UpdateNow() {
+    // now becomes next
+    // will need to be more sophisticated when there are more than two steps
+    std::swap(now, next);
+    return;
   }
 
   TimeData time;

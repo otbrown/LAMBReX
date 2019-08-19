@@ -26,87 +26,92 @@ void AmrSim::CollideAndStream(const int LEVEL) {
   auto& lvl = levels[LEVEL];
   const auto& f_old = lvl.now.get<DistFn>();
   auto f_pc = field_traits<DistFn>::MakeLevelData(f_old.boxArray(), f_old.DistributionMap());
+
   for_point_in(f_old, [&](auto accessor) {
+    auto mode = std::array<double, DistFn::NV>{};
 
-      auto mode = std::array<double, DistFn::NV>{};
-      for (int m = 0; m < DistFn::NV; ++m) {
-	for (int p = 0; p < DistFn::NV; ++p) {
-	  mode[m] += accessor(f_old, p) * MODE_MATRIX[m][p];
-	}
+    for (int m = 0; m < DistFn::NV; ++m) {
+      for (int p = 0; p < DistFn::NV; ++p) {
+        mode[m] += accessor(f_old, p) * MODE_MATRIX[m][p];
       }
+    }
 
-      const auto& density = mode[0];
+    const auto& density = mode[0];
 
-      // no forcing is currently present in the model,
-      // so we disregard uDOTf for now
-      double velocity[NDIMS];
-      double usq = 0.0;
-      for (int a = 0; a < NDIMS; ++a) {
-	velocity[a] = mode[a+1] / density;
-	usq += velocity[a] * velocity[a];
+    // no forcing is currently present in the model,
+    // so we disregard uDOTf for now
+    double velocity[NDIMS];
+    double usq = 0.0;
+    for (int a = 0; a < NDIMS; ++a) {
+      velocity[a] = mode[a+1] / density;
+      usq += velocity[a] * velocity[a];
+    }
+
+    double stress[NDIMS][NDIMS] = {
+      {mode[4], mode[5], mode[6]},
+      {mode[5], mode[7], mode[8]},
+      {mode[6], mode[8], mode[9]}
+    };
+
+    // Form the trace
+    double TrS = 0.0;
+    for (int a = 0; a < NDIMS; ++a) {
+	     TrS += stress[a][a];
+    }
+
+    // Form the traceless part
+    for (int a = 0; a < NDIMS; ++a) {
+      stress[a][a] -= (TrS / NDIMS);
+    }
+
+    // Relax the trace
+    TrS -= OMEGA_B * (TrS - density*usq);
+
+    // Relax the traceless part
+    for (int a = 0; a < NDIMS; ++a) {
+      for (int b = 0; b < NDIMS; ++b) {
+        stress[a][b] -= OMEGA_S * (stress[a][b] - density
+				                * ( velocity[a]
+					              * velocity[b]
+					              - usq * DELTA[a][b]) );
       }
+      stress[a][a] += (TrS / NDIMS);
+    }
 
-      double stress[NDIMS][NDIMS] = {
-	{mode[4], mode[5], mode[6]},
-	{mode[5], mode[7], mode[8]},
-	{mode[6], mode[8], mode[9]}
-      };
+    // copy stress back into mode
+    mode[4] = stress[0][0];
+    mode[5] = stress[0][1];
+    mode[6] = stress[0][2];
 
-      // Form the trace
-      double TrS = 0.0;
-      for (int a = 0; a < NDIMS; ++a) {
-	TrS += stress[a][a];
+    mode[7] = stress[1][1];
+    mode[8] = stress[1][2];
+
+    mode[9] = stress[2][2];
+
+    // Ghosts are relaxed to zero immediately
+    mode[10] = 0.0;
+    mode[11] = 0.0;
+    mode[12] = 0.0;
+    mode[13] = 0.0;
+    mode[14] = 0.0;
+
+    // project back to the velocity basis
+    for (int p = 0; p < NMODES; ++p) {
+      double fp = 0;
+      for (int m = 0; m < NMODES; ++m) {
+	       fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
       }
-      // Form the traceless part
-      for (int a = 0; a < NDIMS; ++a) {
-	stress[a][a] -= (TrS / NDIMS);
-      }
-
-      // Relax the trace
-      TrS -= OMEGA_B * (TrS - density*usq);
-      // Relax the traceless part
-      for (int a = 0; a < NDIMS; ++a) {
-	for (int b = 0; b < NDIMS; ++b) {
-	  stress[a][b] -= OMEGA_S * (stress[a][b] - density
-				     * ( velocity[a]
-					 * velocity[b]
-					 - usq * DELTA[a][b]) );
-	}
-	stress[a][a] += (TrS / NDIMS);
-      }
-
-      // copy stress back into mode
-      mode[4] = stress[0][0];
-      mode[5] = stress[0][1];
-      mode[6] = stress[0][2];
-
-      mode[7] = stress[1][1];
-      mode[8] = stress[1][2];
-
-      mode[9] = stress[2][2];
-
-      // Ghosts are relaxed to zero immediately
-      mode[10] = 0.0;
-      mode[11] = 0.0;
-      mode[12] = 0.0;
-      mode[13] = 0.0;
-      mode[14] = 0.0;
-
-      // project back to the velocity basis
-      for (int p = 0; p < NMODES; ++p) {
-	double fp = 0;
-	for (int m = 0; m < NMODES; ++m) {
-	  fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
-	}
-	accessor(f_pc, p) = fp;
-      }
+      accessor(f_pc, p) = fp;
+    }
     });
 
   f_pc.FillBoundary(geom[LEVEL].periodicity());
   auto& f_new = lvl.next.get<DistFn>();
   for_point_in(f_new, [&f_new, &f_pc](const auto& dest) {
-      DistFn::PropagatePoint(dest, f_pc, f_new);
-    });
+    DistFn::PropagatePoint(dest, f_pc, f_new); });
+
+  // swap now and next
+  lvl.UpdateNow();
 }
 
 
@@ -520,7 +525,7 @@ AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
   // resize vectors
   int num_levels = max_level + 1;
   velocity.resize(num_levels);
-  
+
   f_bndry.resize(NMODES);
   tau_s.resize(num_levels);
   tau_b.resize(num_levels);
