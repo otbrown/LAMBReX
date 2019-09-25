@@ -20,12 +20,12 @@ void AmrSim::UpdateBoundaries(int const LEVEL) {
   return;
 }
 
-void AmrSim::CollideAndStream(const int LEVEL) {
+void AmrSim::Collide(const int LEVEL) {
   const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
   const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
   auto& lvl = levels[LEVEL];
   const auto& f_old = lvl.now.get<DistFn>();
-  auto f_pc = field_traits<DistFn>::MakeLevelData(f_old.boxArray(), f_old.DistributionMap());
+  auto& f_new = lvl.next.get<DistFn>();
 
   for_point_in(f_old, [&](auto accessor) {
     auto mode = std::array<double, DistFn::NV>{};
@@ -37,7 +37,6 @@ void AmrSim::CollideAndStream(const int LEVEL) {
     }
 
     const auto& density = mode[0];
-
     // no forcing is currently present in the model,
     // so we disregard uDOTf for now
     double velocity[NDIMS];
@@ -101,19 +100,28 @@ void AmrSim::CollideAndStream(const int LEVEL) {
       for (int m = 0; m < NMODES; ++m) {
 	       fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
       }
-      accessor(f_pc, p) = fp;
+      accessor(f_new, p) = fp;
     }
     });
 
-  f_pc.FillBoundary(geom[LEVEL].periodicity());
-  auto& f_new = lvl.next.get<DistFn>();
-  for_point_in(f_new, [&f_new, &f_pc](const auto& dest) {
-    DistFn::PropagatePoint(dest, f_pc, f_new); });
+  f_new.FillBoundary(geom[LEVEL].periodicity());
 
-  // swap now and next
-  lvl.UpdateNow();
+  return;
 }
 
+void AmrSim::Stream(int const LEVEL) {
+  auto& f_now = levels[LEVEL].now.get<DistFn>();
+  auto& f_nxt = levels[LEVEL].next.get<DistFn>();
+
+  // NOTE: this overwrites now with propagated data from next
+  // this means the std::swap in UpdateNow is unnecessary, and avoids creating
+  // a temporary duplicate array, but means that next no longer holds valid data
+  for_point_in(f_now, [&f_now, &f_nxt](const auto& dest) {
+    DistFn::PropagatePoint(dest, f_nxt, f_now);
+  });
+
+  return;
+}
 
 void AmrSim::InitDensity(int const LEVEL) {
   amrex::IntVect dims(NX, NY, NZ);

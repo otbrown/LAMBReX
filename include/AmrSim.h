@@ -75,7 +75,13 @@ protected:
   }
   void SwapElements(double * const, int const, int const);
   void UpdateBoundaries(int const);
-  void CollideAndStream(int level);
+  void Collide(int const);
+  void Stream(int const);
+  void CollideAndStream(int const LEVEL) {
+    Collide(LEVEL);
+    Stream(LEVEL);
+    return;
+  }
   void InitDensity(int const);
   void InitVelocity(int const);
   void ComputeDt(int const);
