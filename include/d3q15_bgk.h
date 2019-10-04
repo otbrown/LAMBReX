@@ -8,8 +8,8 @@
 #include "multilevel.h"
 #include "range.hpp"
 
-struct D3Q15 : public VelocitySet<D3Q15, 3, 15, 1> {
-  using base = VelocitySet<D3Q15, 3, 15, 1>;
+struct D3Q15 : public VelocitySet<D3Q15, 3, 15, 2> {
+  using base = VelocitySet<D3Q15, 3, 15, 2>;
 
   static constexpr std::array<int, NV> CX = {
     0,    1, -1, 0, 0, 0, 0,    1, 1, 1, 1, -1, -1, -1, -1
