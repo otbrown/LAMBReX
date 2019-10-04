@@ -20,12 +20,8 @@ void AmrSim::UpdateBoundaries(int const LEVEL) {
   return;
 }
 
-void AmrSim::Collide(const int LEVEL) {
-  const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
-  const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
-  auto& lvl = levels[LEVEL];
-  const auto& f_old = lvl.now.get<DistFn>();
-  auto& f_new = lvl.next.get<DistFn>();
+void AmrSim::Collide(const amrex::MultiFab& f_old, amrex::MultiFab& f_new,
+  const double OMEGA_S, const double OMEGA_B) {
 
   for_point_in(f_old, [&](auto accessor) {
     auto mode = std::array<double, DistFn::NV>{};
@@ -104,24 +100,37 @@ void AmrSim::Collide(const int LEVEL) {
     }
     });
 
+  return;
+}
+
+void AmrSim::Stream(int const LEVEL) {
+  auto& f_nxt = levels[LEVEL].next.get<DistFn>();
+  auto f_prop = field_traits<DistFn>::MakeLevelData(f_nxt.boxArray(),
+    f_nxt.DistributionMap());
+
+  for_point_in(f_nxt, [&f_nxt, &f_prop](const auto& dest) {
+    DistFn::PropagatePoint(dest, f_nxt, f_prop);
+  });
+
+  // swap propagated distribution function in to next
+  std::swap(f_nxt, f_prop);
+
+  return;
+}
+
+void AmrSim::CollideLevel(const int LEVEL) {
+  const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
+  const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
+  const auto& f_old = levels.at(LEVEL).now.get<DistFn>();
+  auto& f_new = levels.at(LEVEL).next.get<DistFn>();
+
+  Collide(f_old, f_new, OMEGA_S, OMEGA_B);
+
   f_new.FillBoundary(geom[LEVEL].periodicity());
 
   return;
 }
 
-void AmrSim::Stream(int const LEVEL) {
-  auto& f_now = levels[LEVEL].now.get<DistFn>();
-  auto& f_nxt = levels[LEVEL].next.get<DistFn>();
-
-  // NOTE: this overwrites now with propagated data from next
-  // this means the std::swap in UpdateNow is unnecessary, and avoids creating
-  // a temporary duplicate array, but means that next no longer holds valid data
-  for_point_in(f_now, [&f_now, &f_nxt](const auto& dest) {
-    DistFn::PropagatePoint(dest, f_nxt, f_now);
-  });
-
-  return;
-}
 
 void AmrSim::InitDensity(int const LEVEL) {
   amrex::IntVect dims(NX, NY, NZ);
@@ -398,6 +407,107 @@ void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
     NMODES, geom[level-1], geom[level], coarse_physbc, 0, fine_physbc, 0,
     refRatio(level-1), mapper, f_bndry, 0);
 
+  return;
+}
+
+void AmrSim::DistFnFillHaloFromCoarse(const int FINE_LEVEL) {
+  // Again based on AmrCore tutorial, this time AmrCoreAdv::FillCoarsePatch
+  // fills the distribution function multifab at the specified level from the
+  // level above
+  // Different from FillPatchTwoLevels which does some sort of rough temporal
+  // interpolatation too, apparently...
+  if (!FINE_LEVEL) amrex::Abort("Cannot fill level 0 halo from coarse.");
+
+  // look at 'next' distributions
+  auto& coarse_mf = levels.at(FINE_LEVEL-1).next.get<DistFn>();
+  auto& fine_mf = levels.at(FINE_LEVEL).next.get<DistFn>();
+
+  //std::cout << "cdm: " << coarse_mf.DistributionMap() << " fdm: " << fine_mf.DistributionMap() << std::endl;
+
+  // get dimensions
+  const int HALO_DEPTH = refRatio(FINE_LEVEL-1)[0];
+
+  // assume a valid mfi for fine level is also valid on coarse level
+  // (implicitly we're assuming fine level may cover a smaller region than the
+  // coarse, but not the other way round)
+  for_point_in_boundary(fine_mf, HALO_DEPTH,
+    [&coarse_mf, &fine_mf, &HALO_DEPTH](auto accessor){
+      auto coarse_acc = accessor.CoarseAccess(HALO_DEPTH);
+      accessor(fine_mf) = coarse_acc(coarse_mf);
+
+/*      amrex::Box cbox = coarse_mf[coarse_acc.mfi].box();
+      amrex::IntVect clo = cbox.smallEnd();
+      amrex::IntVect chi = cbox.bigEnd();
+
+      amrex::Box fbox = fine_mf[accessor.mfi].box();
+      amrex::IntVect flo = fbox.smallEnd();
+      amrex::IntVect fhi = fbox.bigEnd();*/
+
+
+    //std::cout << "flo: " << flo << " fhi: " << fhi << " fpos: " << accessor.pos << " clo: " << clo << " chi: " << chi <<  " cpos: " << coarse_acc.pos << " val: " << coarse_acc(coarse_mf) << std::endl;
+    });
+
+  return;
+}
+
+void AmrSim::RohdeCycle(int const LEVEL) {
+  // Following algorithm for advancing LB simulation of a fine and coarse grid
+  // as per section 2.1 of Rohde, Kandhai, Derksen, and van den Akker (2006).
+  // This method operates on pairs of levels, and includes some subcycling for
+  // the refined level.
+  // The method has been modified to account for the fact that our grid is not
+  // locally refined, but instead multiple grids exist
+
+  // step 1: collision step on coarse and fine grid
+  CollideLevel(LEVEL);
+  CollideLevel(LEVEL+1);
+
+  // step 2: redistribute densities from coarse to fine grid halo (tricky!)
+  DistFnFillHaloFromCoarse(LEVEL+1);
+/*
+  // step 3: propagate on coarse and fine levels
+  Stream(LEVEL);
+  Stream(LEVEL+1);
+
+  // update now from next on finest level
+  levels.at(LEVEL+1).UpdateNow();
+
+  // update time and step count
+  TimeData& time = levels.at(LEVEL+1).time;
+  time.current += time.delta;
+  ++time.step;
+
+  // subcycling controlled here
+  if (LEVEL == finest_level - 1) {
+    for (int iter = 0; iter < refRatio(LEVEL)[0] - 1; ++iter) {
+      // step 4a: collide on the fine level
+      CollideLevel(LEVEL+1);
+      //step 4b: propagate on the fine level
+      Stream(LEVEL+1);
+    }
+
+    // update now from next on finest level
+    levels.at(LEVEL+1).UpdateNow();
+
+    // update time and step count
+    time = levels.at(LEVEL+1).time;
+    time.current += time.delta;
+    ++time.step;
+  } else {
+    RohdeCycle(LEVEL+1);
+  }
+
+  // step 5: fill coarse level from fine level (tricky!)
+
+
+  // update now from next on this level
+  levels.at(LEVEL).UpdateNow();
+
+  // update time and step count
+  time = levels.at(LEVEL).time;
+  time.current += time.delta;
+  ++time.step;
+*/
   return;
 }
 
@@ -735,11 +845,15 @@ void AmrSim::CalcHydroVars(int const LEVEL) {
 }
 
 void AmrSim::Iterate(int const nsteps) {
-  // once there are multiple levels this will need to handle synchronisation
-  // between them
-
-  for (int t = 0; t < nsteps; ++t) {
-    SubCycle(0, 1);
+  if (!finest_level) {
+    for (int t = 0; t < nsteps; ++t) {
+      IterateLevel(0);
+    }
+  } else {
+    for (int t = 0; t < nsteps; ++t) {
+      //SubCycle(0, 1);  // old method
+      RohdeCycle(0);
+    }
   }
 
   return;

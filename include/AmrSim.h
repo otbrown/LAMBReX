@@ -30,7 +30,6 @@ protected:
 
   // model parameters
   constexpr static double CS2 = 1.0 / 3.0; // speed of sound squared
-  constexpr static int HALO_DEPTH = 1;
   constexpr static double NL_DENSITY = -1.0;
   constexpr static double NL_VELOCITY = -3E8;
   static const double DELTA[NDIMS][NDIMS];
@@ -75,11 +74,13 @@ protected:
   }
   void SwapElements(double * const, int const, int const);
   void UpdateBoundaries(int const);
-  void Collide(int const);
+  void Collide(const amrex::MultiFab&, amrex::MultiFab&, const double, const double);
   void Stream(int const);
+  void CollideLevel(int const);
   void CollideAndStream(int const LEVEL) {
-    Collide(LEVEL);
+    CollideLevel(LEVEL);
     Stream(LEVEL);
+    levels.at(LEVEL).UpdateNow();
     return;
   }
   void InitDensity(int const);
@@ -91,7 +92,11 @@ protected:
     const int *, const double *, const double *, const double *, const int *);
   void DistFnFillPatch(int const, amrex::MultiFab&);
   void DistFnFillFromCoarse(int const, amrex::MultiFab&);
+  void DistFnFillHaloFromCoarse(int const);
   bool TagCell(int const, const amrex::IntVect&);
+
+  // Rohde Steps
+  void RohdeCycle(int const);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
