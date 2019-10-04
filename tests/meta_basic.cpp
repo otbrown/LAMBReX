@@ -1,14 +1,14 @@
 // Do some basic compile-time tests of the metaprogramming.
-// 
+//
 // If this compiles, then the tests pass.
-// 
+//
 #include "d3q15_bgk.h"
 #include "range.hpp"
 
 // Velocity set
 static_assert(D3Q15::ND == 3);
 static_assert(D3Q15::NV == 15);
-static_assert(D3Q15::HALO == 1);
+static_assert(D3Q15::HALO == 2);
 
 constexpr bool check_vels() {
   auto ans = true;
