@@ -10,7 +10,7 @@ namespace detail {
   // This type will index into a MultiFab at the desired point and
   // also provides shifts (by operators + and -) for stencil
   // operations.
-  // 
+  //
   // For this to work, the pack I must be an index_sequence up to
   // AMREX_SPACEDIM, i.e. DIM=2 => I={0,1} and DIM=3 => I={0,1,2}
   //
@@ -26,7 +26,7 @@ namespace detail {
   //   }
   // }
   template<size_t... I>
-  struct Accessor {  
+  struct Accessor {
     amrex::MFIter& mfi;
     amrex::IntVect pos;
 
@@ -49,8 +49,17 @@ namespace detail {
     Accessor operator-(const std::array<int, AMREX_SPACEDIM>& shift) const {
       return Accessor{mfi, {(pos[I] - shift[I])...}};
     }
+
+    Accessor CoarseAccess(const int RATIO) const {
+      amrex::IntVect coarse_pos;
+      for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
+        if (pos[dim] < 0) coarse_pos[dim] = (pos[dim]-1) / RATIO;
+        else coarse_pos[dim] = pos[dim] / RATIO;
+      }
+      return Accessor{mfi, coarse_pos};
+    }
   };
-  
+
   template <size_t... I>
   Accessor<I...> accessor_deducer(std::index_sequence<I...>);
 }
@@ -69,12 +78,86 @@ void for_point_in(const amrex::MultiFab& mf, PosFunc&& f) {
     const auto& hi = box.bigEnd();
 
     auto acc = Accessor{mfi};
-    for     (int k = lo[2]; k <= hi[2]; ++k)
-      for   (int j = lo[1]; j <= hi[1]; ++j)
-	for (int i = lo[0]; i <= hi[0]; ++i) {
-	  acc.pos = {i, j, k};
-	  f(acc);
-	}
+    // loops ordered fortran style
+    for (int i = lo[0]; i <= hi[0]; ++i)
+      for (int j = lo[1]; j <= hi[1]; ++j)
+        for (int k = lo[2]; k <= hi[2]; ++k) {
+	         acc.pos = {i, j, k};
+	         f(acc);
+         }
+  }
+}
+
+// Call the supplied function for every point in the boundary of every box in
+// the MultiFab. The function will be passed an Accessor instance which
+// will index into a MultiFab for you.
+template<typename PosFunc>
+void for_point_in_boundary(const amrex::MultiFab& mf, int const HALO_DEPTH,
+PosFunc&& f) {
+  for (amrex::MFIter mfi(mf); mfi.isValid(); ++mfi) {
+    int i, j, k;
+    const auto box = mf[mfi].box();
+    const auto& lo = box.smallEnd();
+    const auto& hi = box.bigEnd();
+
+    auto acc = Accessor{mfi};
+    // loops ordered fortran style
+    // lower j-k planes
+    for (i = lo[0]; i < lo[0]+HALO_DEPTH; ++i) {
+      for (j = lo[1]; j <= hi[1]; ++j) {
+        for (k = lo[2]; k <= hi[2]; ++k) {
+          acc.pos = {i, j, k};
+          f(acc);
+        }
+      }
+    }
+    // upper j-k planes
+    for (i = hi[0]-HALO_DEPTH+1; i <= hi[0]; ++i) {
+      for (j = lo[1]; j <= hi[1]; ++j) {
+        for (k = lo[2]; k <= hi[2]; ++k) {
+          acc.pos = {i, j, k};
+          f(acc);
+        }
+      }
+    }
+
+    // lower i-k planes
+    for (j = lo[1]; j < lo[1]+HALO_DEPTH; ++j) {
+      for (i = lo[0]+HALO_DEPTH; i <= hi[0]-HALO_DEPTH; ++i) {
+        for (k = lo[2]; k <= hi[2]; ++k) {
+          acc.pos = {i, j, k};
+          f(acc);
+        }
+      }
+    }
+    // upper i-k planes
+    for (j = hi[1]-HALO_DEPTH+1; j <= hi[1]; ++j) {
+      for (i = lo[0]+HALO_DEPTH; i <= hi[0]-HALO_DEPTH; ++i) {
+        for (k = lo[2]; k <= hi[2]; ++k) {
+          acc.pos = {i, j, k};
+          f(acc);
+        }
+      }
+    }
+
+    // lower i-j planes
+    for (k = lo[2]; k < lo[2]+HALO_DEPTH; ++k) {
+      for (i = lo[0]+HALO_DEPTH; i <= hi[0]-HALO_DEPTH; ++i) {
+        for (j = lo[1]+HALO_DEPTH; j <= hi[1]-HALO_DEPTH; ++j) {
+          acc.pos = {i, j, k};
+          f(acc);
+        }
+      }
+    }
+    // upper i-j planes
+    for (k = hi[2]-HALO_DEPTH+1; k <= hi[2]; ++k) {
+      for (i = lo[0]+HALO_DEPTH; i <= hi[0]-HALO_DEPTH; ++i) {
+        for (j = lo[1]+HALO_DEPTH; j <= hi[1]-HALO_DEPTH; ++j) {
+          acc.pos = {i, j, k};
+          f(acc);
+        }
+      }
+    }
   }
 }
 
