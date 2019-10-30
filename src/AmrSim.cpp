@@ -3,6 +3,7 @@
 #include "AMRSim.h"
 #include "AMReX_filcc_f.H"
 #include "AMReX_FillPatchUtil.H"
+#include "AMReX_Interpolater.H"
 
 #include "amr_help.h"
 
@@ -315,9 +316,6 @@ void AmrSim::ComputeDt(int const LEVEL) {
     mass.at(LEVEL) = 1.0;
   }
 
-  // // we will likely need something like this (from AmrCoreAdv) to calculate the
-  // // increase in sim time at different refinement LEVELs
-  // levels.at(LEVEL).dt = 1.0;
   return;
 }
 
@@ -395,7 +393,7 @@ void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
   // fills the distribution function multifab at the specified level from the
   // level above
   // Different from FillPatchTwoLevels which does some sort of rough temporal
-  // interpolatation too, apparently...
+  // interpolatation too
   if (!level) amrex::Abort("Cannot fill level 0 from coarse.");
 
   amrex::PhysBCFunct<amrex::BndryFuncArray> coarse_physbc(geom[level-1],
@@ -410,104 +408,52 @@ void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
   return;
 }
 
-void AmrSim::DistFnFillHaloFromCoarse(const int FINE_LEVEL) {
-  // Again based on AmrCore tutorial, this time AmrCoreAdv::FillCoarsePatch
-  // fills the distribution function multifab at the specified level from the
-  // level above
-  // Different from FillPatchTwoLevels which does some sort of rough temporal
-  // interpolatation too, apparently...
-  if (!FINE_LEVEL) amrex::Abort("Cannot fill level 0 halo from coarse.");
-
-  // look at 'next' distributions
-  auto& coarse_mf = levels.at(FINE_LEVEL-1).next.get<DistFn>();
-  auto& fine_mf = levels.at(FINE_LEVEL).next.get<DistFn>();
-
-  //std::cout << "cdm: " << coarse_mf.DistributionMap() << " fdm: " << fine_mf.DistributionMap() << std::endl;
-
-  // get dimensions
-  const int HALO_DEPTH = refRatio(FINE_LEVEL-1)[0];
-
-  // assume a valid mfi for fine level is also valid on coarse level
-  // (implicitly we're assuming fine level may cover a smaller region than the
-  // coarse, but not the other way round)
-  for_point_in_boundary(fine_mf, HALO_DEPTH,
-    [&coarse_mf, &fine_mf, &HALO_DEPTH](auto accessor){
-      auto coarse_acc = accessor.CoarseAccess(HALO_DEPTH);
-      accessor(fine_mf) = coarse_acc(coarse_mf);
-
-/*      amrex::Box cbox = coarse_mf[coarse_acc.mfi].box();
-      amrex::IntVect clo = cbox.smallEnd();
-      amrex::IntVect chi = cbox.bigEnd();
-
-      amrex::Box fbox = fine_mf[accessor.mfi].box();
-      amrex::IntVect flo = fbox.smallEnd();
-      amrex::IntVect fhi = fbox.bigEnd();*/
-
-
-    //std::cout << "flo: " << flo << " fhi: " << fhi << " fpos: " << accessor.pos << " clo: " << clo << " chi: " << chi <<  " cpos: " << coarse_acc.pos << " val: " << coarse_acc(coarse_mf) << std::endl;
-    });
-
-  return;
-}
-
-void AmrSim::RohdeCycle(int const LEVEL) {
+void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // Following algorithm for advancing LB simulation of a fine and coarse grid
   // as per section 2.1 of Rohde, Kandhai, Derksen, and van den Akker (2006).
-  // This method operates on pairs of levels, and includes some subcycling for
+  // This method operates on pairs of levels, and includes subcycling for
   // the refined level.
   // The method has been modified to account for the fact that our grid is not
   // locally refined, but instead multiple grids exist
 
-  // step 1: collision step on coarse and fine grid
-  CollideLevel(LEVEL);
-  CollideLevel(LEVEL+1);
+  // step 1: Collide on coarse level
+  CollideLevel(COARSE_LEVEL);
 
-  // step 2: redistribute densities from coarse to fine grid halo (tricky!)
-  DistFnFillHaloFromCoarse(LEVEL+1);
-/*
-  // step 3: propagate on coarse and fine levels
-  Stream(LEVEL);
-  Stream(LEVEL+1);
+  // step 2: Fill ghost cells of fine level from coarse level
+  Explode(COARSE_LEVEL);
 
-  // update now from next on finest level
-  levels.at(LEVEL+1).UpdateNow();
-
-  // update time and step count
-  TimeData& time = levels.at(LEVEL+1).time;
-  time.current += time.delta;
-  ++time.step;
-
-  // subcycling controlled here
-  if (LEVEL == finest_level - 1) {
-    for (int iter = 0; iter < refRatio(LEVEL)[0] - 1; ++iter) {
-      // step 4a: collide on the fine level
-      CollideLevel(LEVEL+1);
-      //step 4b: propagate on the fine level
-      Stream(LEVEL+1);
+  // branch here for subcycling -- if fine level is *finest* level just do
+  // collide and stream, otherwise call RohdeCycle on fine level
+  // in order to maintain a constant speed of sound the fine level should be
+  // iterated as many times as the refinement ratio
+  const int REF_RATIO = refRatio(COARSE_LEVEL)[0];
+  if (COARSE_LEVEL + 1 == finest_level) {
+    for (int iter = 0; iter < REF_RATIO; ++iter) {
+      // step 3: Collide on fine level
+      CollideLevel(COARSE_LEVEL+1);
+      // step 4: Stream on fine level
+      Stream(COARSE_LEVEL+1);
     }
-
-    // update now from next on finest level
-    levels.at(LEVEL+1).UpdateNow();
-
-    // update time and step count
-    time = levels.at(LEVEL+1).time;
-    time.current += time.delta;
-    ++time.step;
   } else {
-    RohdeCycle(LEVEL+1);
+    for (int iter = 0; iter < REF_RATIO; ++iter) {
+      RohdeCycle(COARSE_LEVEL+1);
+    }
   }
 
-  // step 5: fill coarse level from fine level (tricky!)
+  // step 5: Stream on coarse level
+  Stream(COARSE_LEVEL);
 
+  // step 6: Sum from fine level in to ghost level
+  SumFromFine(COARSE_LEVEL);
 
-  // update now from next on this level
-  levels.at(LEVEL).UpdateNow();
+  return;
+}
 
-  // update time and step count
-  time = levels.at(LEVEL).time;
-  time.current += time.delta;
-  ++time.step;
-*/
+void AmrSim::Explode(int const COARSE_LEVEL) {
+  return;
+}
+
+void AmrSim::SumFromFine(int const COARSE_LEVEL) {
   return;
 }
 

@@ -92,11 +92,12 @@ protected:
     const int *, const double *, const double *, const double *, const int *);
   void DistFnFillPatch(int const, amrex::MultiFab&);
   void DistFnFillFromCoarse(int const, amrex::MultiFab&);
-  void DistFnFillHaloFromCoarse(int const);
   bool TagCell(int const, const amrex::IntVect&);
 
   // Rohde Steps
   void RohdeCycle(int const);
+  void Explode(int const);
+  void SumFromFine(int const);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
