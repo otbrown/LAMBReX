@@ -98,6 +98,8 @@ protected:
   void RohdeCycle(int const);
   void Explode(int const);
   void SumFromFine(int const);
+  void StreamInterior(const amrex::MultiFab&, amrex::MultiFab&);
+  void CompleteTimeStep(int const);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;

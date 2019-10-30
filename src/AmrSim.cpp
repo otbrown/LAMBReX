@@ -416,8 +416,27 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // The method has been modified to account for the fact that our grid is not
   // locally refined, but instead multiple grids exist
 
+
+  // calculate relaxation frequency at coarse and fine levels
+  const double OMEGA_S_C = 1.0 / (tau_s.at(COARSE_LEVEL)+0.5);
+  const double OMEGA_B_C = 1.0 / (tau_b.at(COARSE_LEVEL)+0.5);
+  const double OMEGA_S_F = 1.0 / (tau_s.at(COARSE_LEVEL+1)+0.5);
+  const double OMEGA_B_F = 1.0 / (tau_b.at(COARSE_LEVEL+1)+0.5);
+
+  // build post collision multifabs
+  const int REF_RATIO = refRatio(COARSE_LEVEL)[0];
+  const auto& f_C = levels[COARSE_LEVEL].now.get<DistFn>();
+  const auto& f_F = levels[COARSE_LEVEL+1].now.get<DistFn>();
+
+  amrex::MultiFab f_C_pc(f_C.boxArray(), f_C.DistributionMap(), 1, 1);
+  amrex::MultiFab f_F_pc(f_F.boxArray(), f_F.DistributionMap(), 1, 2*REF_RATIO);
+
+  // initialise post collision multifabs
+  f_C_pc.setVal(0);
+  f_F_pc.setVal(0);
+
   // step 1: Collide on coarse level
-  CollideLevel(COARSE_LEVEL);
+  Collide(f_C, f_C_pc, OMEGA_S_C, OMEGA_B_C);
 
   // step 2: Fill ghost cells of fine level from coarse level
   Explode(COARSE_LEVEL);
@@ -426,14 +445,16 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // collide and stream, otherwise call RohdeCycle on fine level
   // in order to maintain a constant speed of sound the fine level should be
   // iterated as many times as the refinement ratio
-  const int REF_RATIO = refRatio(COARSE_LEVEL)[0];
   if (COARSE_LEVEL + 1 == finest_level) {
     for (int iter = 0; iter < REF_RATIO; ++iter) {
       // step 3: Collide on fine level
-      CollideLevel(COARSE_LEVEL+1);
+      Collide(f_F, f_F_pc, OMEGA_S_F, OMEGA_B_F);
       // step 4: Stream on fine level
       Stream(COARSE_LEVEL+1);
     }
+    // we should make sure actual level data is kept up-to-date for finest level
+    // note that this assumes the data in levels[FINE_LEVEL].next is meaningful
+    CompleteTimeStep(COARSE_LEVEL+1);
   } else {
     for (int iter = 0; iter < REF_RATIO; ++iter) {
       RohdeCycle(COARSE_LEVEL+1);
@@ -441,10 +462,13 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   }
 
   // step 5: Stream on coarse level
-  Stream(COARSE_LEVEL);
+  StreamInterior(f_C_pc, levels[COARSE_LEVEL].next.get<DistFn>());
 
   // step 6: Sum from fine level in to ghost level
   SumFromFine(COARSE_LEVEL);
+
+  // mark completion of time step for coarse level (includes now <-> next)
+  CompleteTimeStep(COARSE_LEVEL);
 
   return;
 }
@@ -454,6 +478,22 @@ void AmrSim::Explode(int const COARSE_LEVEL) {
 }
 
 void AmrSim::SumFromFine(int const COARSE_LEVEL) {
+  return;
+}
+
+void AmrSim::StreamInterior(const amrex::MultiFab& f_SRC,
+amrex::MultiFab& f_dest) {
+  for_point_in(f_SRC, [&f_SRC, &f_dest](const auto& dest_acc) {
+    DistFn::PropagatePoint(dest_acc, f_SRC, f_dest);
+  });
+  return;
+}
+
+void AmrSim::CompleteTimeStep(int const LEVEL) {
+  auto& lvl = levels[LEVEL];
+  lvl.time.current += lvl.time.delta;
+  ++lvl.time.step;
+  lvl.UpdateNow();
   return;
 }
 
