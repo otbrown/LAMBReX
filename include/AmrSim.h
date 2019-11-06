@@ -3,6 +3,7 @@
 #define AMRSIM_H
 
 #include "AMReX_AmrCore.H"
+#include "AMReX_iMultiFab.H"
 #include "AMReX_MultiFab.H"
 #include "AMReX_BCRec.H"
 #include "AMReX_PhysBCFunct.H"
@@ -61,6 +62,13 @@ protected:
   // distribution function (work array)
   std::vector<SimLevelData> levels;
 
+  // masks to keep track of which parts of the coarse level are covered by a
+  // fine grid. The iMultiFab contains COARSE_VAL if not, FINE_VAL if so. The
+  // convention from AMReX itself is that COARSE_VAL=0, FINE_VAL=1.
+  const int COARSE_VAL = 0;
+  const int FINE_VAL = 1;
+  std::vector<amrex::iMultiFab> fine_masks;
+
   // member functions
   int FLindex(int const i, int const j, int const k, int const n,
               amrex::IntVect const dims) const {
@@ -93,6 +101,7 @@ protected:
   void DistFnFillPatch(int const, amrex::MultiFab&);
   void DistFnFillFromCoarse(int const, amrex::MultiFab&);
   bool TagCell(int const, const amrex::IntVect&);
+  void MakeFineMask(int const);
 
   // Rohde Steps
   void RohdeCycle(int const);

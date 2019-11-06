@@ -4,6 +4,7 @@
 #include "AMReX_filcc_f.H"
 #include "AMReX_FillPatchUtil.H"
 #include "AMReX_Interpolater.H"
+#include "AMReX_MultiFabUtil.H"
 
 #include "amr_help.h"
 
@@ -408,6 +409,23 @@ void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
   return;
 }
 
+bool AmrSim::TagCell(int const level, const amrex::IntVect& pos) {
+  // should this cell be tagged for refinement?
+  if (static_tags.at(level).contains(pos)) return true;
+  else return false;
+}
+
+void AmrSim::MakeFineMask(int const COARSE_LEVEL) {
+  const amrex::MultiFab& cmf = levels[COARSE_LEVEL].now.get<DistFn>();
+  const amrex::BoxArray& fba =
+    levels[COARSE_LEVEL].now.get<DistFn>().boxArray();
+
+  fine_masks[COARSE_LEVEL] =
+    amrex::makeFineMask(cmf, fba, refRatio(COARSE_LEVEL), COARSE_VAL, FINE_VAL);
+
+  return;
+}
+
 void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // Following algorithm for advancing LB simulation of a fine and coarse grid
   // as per section 2.1 of Rohde, Kandhai, Derksen, and van den Akker (2006).
@@ -501,12 +519,6 @@ void AmrSim::CompleteTimeStep(int const LEVEL) {
   return;
 }
 
-bool AmrSim::TagCell(int const level, const amrex::IntVect& pos) {
-  // should this cell be tagged for refinement?
-  if (static_tags.at(level).contains(pos)) return true;
-  else return false;
-}
-
 void AmrSim::ErrorEst(int level, amrex::TagBoxArray& tba, double time, int ngrow) {
   // implements control logic for levels which require refinement
   amrex::IntVect pos;
@@ -584,6 +596,8 @@ void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArra
   // calculate hydrodynamic variables at this level
   CalcHydroVars(level);
 
+  MakeFineMask(level-1);
+
   return;
 }
 
@@ -613,6 +627,8 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
   // calculate hydrodynamic variables on this level using new dist_fn
   CalcHydroVars(level);
 
+  if (level != finest_level) MakeFineMask(level);
+
   return;
 }
 
@@ -639,6 +655,7 @@ AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
   tau_b.resize(num_levels);
   mass.resize(num_levels);
   static_tags.resize(num_levels);
+  fine_masks.resize(num_levels);
 
   for (int i = 0; i < NDIMS; ++i) {
     if (PERIODICITY[i]) {
@@ -859,12 +876,17 @@ void AmrSim::SetStaticRefinement(int const level, const std::array<int, NDIMS>&
 
   regrid(level, GetTime(level));
 
+  // update fine mask
+  MakeFineMask(level);
+
   return;
 }
 
 void AmrSim::UnsetStaticRefinement(int const level) {
   static_tags.at(level).clear();
   regrid(level, GetTime(level));
+  // update fine mask
+  MakeFineMask(level);
   return;
 }
 
