@@ -416,7 +416,6 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // The method has been modified to account for the fact that our grid is not
   // locally refined, but instead multiple grids exist
 
-
   // calculate relaxation frequency at coarse and fine levels
   const double OMEGA_S_C = 1.0 / (tau_s.at(COARSE_LEVEL)+0.5);
   const double OMEGA_B_C = 1.0 / (tau_b.at(COARSE_LEVEL)+0.5);
@@ -434,12 +433,12 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // initialise post collision multifabs
   f_C_pc.setVal(0);
   f_F_pc.setVal(0);
+  const amrex::Periodicity FULLY_PERIODIC(amrex::IntVect(AMREX_D_DECL(1,1,1)));
+  f_C_pc.FillBoundary(FULLY_PERIODIC);
+  f_F_pc.FillBoundary(FULLY_PERIODIC);
 
   // step 1: Collide on coarse level
   Collide(f_C, f_C_pc, OMEGA_S_C, OMEGA_B_C);
-
-  // step 2: Fill ghost cells of fine level from coarse level
-  Explode(COARSE_LEVEL);
 
   // branch here for subcycling -- if fine level is *finest* level just do
   // collide and stream, otherwise call RohdeCycle on fine level
@@ -447,8 +446,10 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // iterated as many times as the refinement ratio
   if (COARSE_LEVEL + 1 == finest_level) {
     for (int iter = 0; iter < REF_RATIO; ++iter) {
-      // step 3: Collide on fine level
+      // step 2: Collide on fine level
       Collide(f_F, f_F_pc, OMEGA_S_F, OMEGA_B_F);
+      // step 3: Fill fine boundary from coarse
+      Explode(COARSE_LEVEL);
       // step 4: Stream on fine level
       Stream(COARSE_LEVEL+1);
     }
@@ -462,6 +463,8 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   }
 
   // step 5: Stream on coarse level
+  // Note that we actually have to make sure we don't pull from cells which are covered by the fine grid
+  // probably best to zero during collision
   StreamInterior(f_C_pc, levels[COARSE_LEVEL].next.get<DistFn>());
 
   // step 6: Sum from fine level in to ghost level
@@ -474,6 +477,9 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
 }
 
 void AmrSim::Explode(int const COARSE_LEVEL) {
+  // Should take the coarse value and copy it to all fine cells covered by it.
+  // They should have the *same* value as the coarse cell, it should *not* be evenly
+  // divided amongst the fine cells.
   return;
 }
 
