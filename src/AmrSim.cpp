@@ -427,15 +427,13 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   const auto& f_C = levels[COARSE_LEVEL].now.get<DistFn>();
   const auto& f_F = levels[COARSE_LEVEL+1].now.get<DistFn>();
 
-  amrex::MultiFab f_C_pc(f_C.boxArray(), f_C.DistributionMap(), 1, 1);
-  amrex::MultiFab f_F_pc(f_F.boxArray(), f_F.DistributionMap(), 1, 2*REF_RATIO);
+  amrex::MultiFab f_C_pc(f_C.boxArray(), f_C.DistributionMap(), NMODES, 1);
+  amrex::MultiFab f_F_pc(f_F.boxArray(), f_F.DistributionMap(), NMODES,
+    2*REF_RATIO);
 
   // initialise post collision multifabs
-  f_C_pc.setVal(0);
-  f_F_pc.setVal(0);
-  const amrex::Periodicity FULLY_PERIODIC(amrex::IntVect(AMREX_D_DECL(1,1,1)));
-  f_C_pc.FillBoundary(FULLY_PERIODIC);
-  f_F_pc.FillBoundary(FULLY_PERIODIC);
+  f_C_pc.setVal(0.0);
+  f_F_pc.setVal(0.0);
 
   // step 1: Collide on coarse level
   Collide(f_C, f_C_pc, OMEGA_S_C, OMEGA_B_C);
