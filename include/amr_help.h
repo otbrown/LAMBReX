@@ -37,6 +37,13 @@ namespace detail {
       return multifab[mfi](pos, comp);
     }
 
+    inline int& operator()(amrex::iMultiFab& imultifab, int comp=0) const {
+      return imultifab[mfi](pos, comp);
+    }
+    inline const int& operator()(const amrex::iMultiFab& imultifab, int comp=0) const {
+      return imultifab[mfi](pos, comp);
+    }
+
     Accessor operator+(const amrex::IntVect& shift) const {
       return Accessor{mfi, pos+shift};
     }
@@ -51,11 +58,9 @@ namespace detail {
     }
 
     Accessor CoarseAccess(const int RATIO) const {
-      amrex::IntVect coarse_pos;
-      for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
-        if (pos[dim] < 0) coarse_pos[dim] = (pos[dim]-1) / RATIO;
-        else coarse_pos[dim] = pos[dim] / RATIO;
-      }
+      amrex::IntVect coarse_pos(pos);
+      coarse_pos.coarsen(RATIO);
+
       return Accessor{mfi, coarse_pos};
     }
   };
