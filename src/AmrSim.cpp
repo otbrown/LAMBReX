@@ -627,7 +627,7 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
   // calculate hydrodynamic variables on this level using new dist_fn
   CalcHydroVars(level);
 
-  if (level != finest_level) MakeFineMask(level);
+  if (level < finest_level) MakeFineMask(level);
 
   return;
 }
