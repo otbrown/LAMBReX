@@ -161,8 +161,8 @@ TEST_CASE("ml_pulse Regression", "[regression]")
     for (k = ratio*LO[2]; k <= ratio*HI[2]; k += ratio) {
       for (j = ratio*LO[1]; j <= ratio*HI[1]; j += ratio) {
         for (i = ratio*LO[0]; i <= ratio*HI[0]; i += ratio) {
-          INFO("t=100 (i,j,k)=(" << i << "," << j << "," << k << ") rhodex="
-               << rhodex)
+          INFO("t=100 (i,j,k)=(" << i << "," << j << "," << k << ") level="
+            << level << " rhodex=" << rhodex)
           REQUIRE(sim.GetDensity(i, j, k, level) == Approx(RHO_t100[rhodex++]));
           for (n = 0; n < AMREX_SPACEDIM; ++n) {
             INFO("veldex=" << veldex << " n=" << n)
