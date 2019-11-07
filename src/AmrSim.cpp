@@ -105,6 +105,94 @@ void AmrSim::Collide(const amrex::MultiFab& f_old, amrex::MultiFab& f_new,
   return;
 }
 
+void AmrSim::Collide(const amrex::MultiFab& f_old, amrex::MultiFab& f_new,
+  const double OMEGA_S, const double OMEGA_B,
+  const amrex::iMultiFab& FINE_MASK) {
+
+  for_point_in(f_old, [&](auto accessor) {
+    if (accessor(FINE_MASK) == FINE_VAL) {
+      for (int m = 0; m < DistFn::NV; ++m) accessor(f_new, m) = 0.0;
+    } else {
+      auto mode = std::array<double, DistFn::NV>{};
+
+      for (int m = 0; m < DistFn::NV; ++m) {
+        for (int p = 0; p < DistFn::NV; ++p) {
+          mode[m] += accessor(f_old, p) * MODE_MATRIX[m][p];
+        }
+      }
+
+      const auto& density = mode[0];
+      // no forcing is currently present in the model,
+      // so we disregard uDOTf for now
+      double velocity[NDIMS];
+      double usq = 0.0;
+      for (int a = 0; a < NDIMS; ++a) {
+        velocity[a] = mode[a+1] / density;
+        usq += velocity[a] * velocity[a];
+      }
+
+      double stress[NDIMS][NDIMS] = {
+        {mode[4], mode[5], mode[6]},
+        {mode[5], mode[7], mode[8]},
+        {mode[6], mode[8], mode[9]}
+      };
+
+      // Form the trace
+      double TrS = 0.0;
+      for (int a = 0; a < NDIMS; ++a) {
+        TrS += stress[a][a];
+      }
+
+      // Form the traceless part
+      for (int a = 0; a < NDIMS; ++a) {
+        stress[a][a] -= (TrS / NDIMS);
+      }
+
+      // Relax the trace
+      TrS -= OMEGA_B * (TrS - density*usq);
+
+      // Relax the traceless part
+      for (int a = 0; a < NDIMS; ++a) {
+        for (int b = 0; b < NDIMS; ++b) {
+          stress[a][b] -= OMEGA_S * (stress[a][b] - density
+                          * ( velocity[a]
+                          * velocity[b]
+                          - usq * DELTA[a][b]) );
+        }
+        stress[a][a] += (TrS / NDIMS);
+      }
+
+      // copy stress back into mode
+      mode[4] = stress[0][0];
+      mode[5] = stress[0][1];
+      mode[6] = stress[0][2];
+
+      mode[7] = stress[1][1];
+      mode[8] = stress[1][2];
+
+      mode[9] = stress[2][2];
+
+      // Ghosts are relaxed to zero immediately
+      mode[10] = 0.0;
+      mode[11] = 0.0;
+      mode[12] = 0.0;
+      mode[13] = 0.0;
+      mode[14] = 0.0;
+
+      // project back to the velocity basis
+      for (int p = 0; p < NMODES; ++p) {
+        double fp = 0;
+        for (int m = 0; m < NMODES; ++m) {
+          fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
+        }
+        accessor(f_new, p) = fp;
+      }
+    }
+    });
+
+  return;
+}
+
 void AmrSim::Stream(int const LEVEL) {
   auto& f_nxt = levels[LEVEL].next.get<DistFn>();
   auto f_prop = field_traits<DistFn>::MakeLevelData(f_nxt.boxArray(),
@@ -454,7 +542,7 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   f_F_pc.setVal(0.0);
 
   // step 1: Collide on coarse level
-  Collide(f_C, f_C_pc, OMEGA_S_C, OMEGA_B_C);
+  Collide(f_C, f_C_pc, OMEGA_S_C, OMEGA_B_C, fine_masks[COARSE_LEVEL]);
 
   // branch here for subcycling -- if fine level is *finest* level just do
   // collide and stream, otherwise call RohdeCycle on fine level

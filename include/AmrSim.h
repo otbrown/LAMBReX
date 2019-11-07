@@ -83,6 +83,8 @@ protected:
   void SwapElements(double * const, int const, int const);
   void UpdateBoundaries(int const);
   void Collide(const amrex::MultiFab&, amrex::MultiFab&, const double, const double);
+  void Collide(const amrex::MultiFab&, amrex::MultiFab&, const double,
+    const double, const amrex::iMultiFab&);
   void Stream(int const);
   void CollideLevel(int const);
   void CollideAndStream(int const LEVEL) {
