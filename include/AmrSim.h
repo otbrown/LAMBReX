@@ -9,6 +9,7 @@
 #include "AMReX_PhysBCFunct.H"
 #include "AMReX_Interpolater.H"
 
+#include "amr_help.h"
 #include "velocity_set.h"
 #include "component.h"
 #include "multilevel.h"
@@ -47,8 +48,8 @@ protected:
 
   // address of interpolator to use between coarse and fine grids
   // these are constructed as globals by AMReX...
-  // cell_cons_interp : cell conservative linear interpolation
-  amrex::Interpolater * mapper = &amrex::cell_cons_interp;
+  // PCInterp : piecewise interpolation
+  amrex::PCInterp mapper;
 
   std::vector<double> tau_s;
   std::vector<double> tau_b;
@@ -82,9 +83,7 @@ protected:
   }
   void SwapElements(double * const, int const, int const);
   void UpdateBoundaries(int const);
-  void Collide(const amrex::MultiFab&, amrex::MultiFab&, const double, const double);
-  void Collide(const amrex::MultiFab&, amrex::MultiFab&, const double,
-    const double, const amrex::iMultiFab&);
+  void Collide(amrex::MultiFab&, const double, const double);
   void Stream(int const);
   void CollideLevel(int const);
   void CollideAndStream(int const LEVEL) {
@@ -107,10 +106,13 @@ protected:
 
   // Rohde Steps
   void RohdeCycle(int const);
-  void Explode(int const);
+  void InitPostCollision(int const);
+  void CoarseCollide(int const);
+  void FineCollide(int const);
+  void FillGhostFromCoarse(int const);
   void SumFromFine(int const);
-  void StreamInterior(const amrex::MultiFab&, amrex::MultiFab&);
-  void CompleteTimeStep(int const);
+  void ZeroInvalidComponents(int const);
+  void UpdateDistribution(int const);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;

@@ -1,6 +1,6 @@
 #include <iostream>
 #include <array>
-#include "AMRSim.h"
+#include "AmrSim.h"
 #include "AMReX_filcc_f.H"
 #include "AMReX_FillPatchUtil.H"
 #include "AMReX_Interpolater.H"
@@ -22,15 +22,16 @@ void AmrSim::UpdateBoundaries(int const LEVEL) {
   return;
 }
 
-void AmrSim::Collide(const amrex::MultiFab& f_old, amrex::MultiFab& f_new,
-  const double OMEGA_S, const double OMEGA_B) {
+void AmrSim::Collide(amrex::MultiFab& f_pc, const double OMEGA_S,
+const double OMEGA_B) {
 
-  for_point_in(f_old, [&](auto accessor) {
+  for_point_in(f_pc, [&](auto accessor) {
+    // this array declaration zero-initialises
     auto mode = std::array<double, DistFn::NV>{};
 
     for (int m = 0; m < DistFn::NV; ++m) {
       for (int p = 0; p < DistFn::NV; ++p) {
-        mode[m] += accessor(f_old, p) * MODE_MATRIX[m][p];
+        mode[m] += accessor(f_pc, p) * MODE_MATRIX[m][p];
       }
     }
 
@@ -98,97 +99,9 @@ void AmrSim::Collide(const amrex::MultiFab& f_old, amrex::MultiFab& f_new,
       for (int m = 0; m < NMODES; ++m) {
 	       fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
       }
-      accessor(f_new, p) = fp;
+      accessor(f_pc, p) = fp;
     }
-    });
-
-  return;
-}
-
-void AmrSim::Collide(const amrex::MultiFab& f_old, amrex::MultiFab& f_new,
-  const double OMEGA_S, const double OMEGA_B,
-  const amrex::iMultiFab& FINE_MASK) {
-
-  for_point_in(f_old, [&](auto accessor) {
-    if (accessor(FINE_MASK) == FINE_VAL) {
-      for (int m = 0; m < DistFn::NV; ++m) accessor(f_new, m) = 0.0;
-    } else {
-      auto mode = std::array<double, DistFn::NV>{};
-
-      for (int m = 0; m < DistFn::NV; ++m) {
-        for (int p = 0; p < DistFn::NV; ++p) {
-          mode[m] += accessor(f_old, p) * MODE_MATRIX[m][p];
-        }
-      }
-
-      const auto& density = mode[0];
-      // no forcing is currently present in the model,
-      // so we disregard uDOTf for now
-      double velocity[NDIMS];
-      double usq = 0.0;
-      for (int a = 0; a < NDIMS; ++a) {
-        velocity[a] = mode[a+1] / density;
-        usq += velocity[a] * velocity[a];
-      }
-
-      double stress[NDIMS][NDIMS] = {
-        {mode[4], mode[5], mode[6]},
-        {mode[5], mode[7], mode[8]},
-        {mode[6], mode[8], mode[9]}
-      };
-
-      // Form the trace
-      double TrS = 0.0;
-      for (int a = 0; a < NDIMS; ++a) {
-        TrS += stress[a][a];
-      }
-
-      // Form the traceless part
-      for (int a = 0; a < NDIMS; ++a) {
-        stress[a][a] -= (TrS / NDIMS);
-      }
-
-      // Relax the trace
-      TrS -= OMEGA_B * (TrS - density*usq);
-
-      // Relax the traceless part
-      for (int a = 0; a < NDIMS; ++a) {
-        for (int b = 0; b < NDIMS; ++b) {
-          stress[a][b] -= OMEGA_S * (stress[a][b] - density
-                          * ( velocity[a]
-                          * velocity[b]
-                          - usq * DELTA[a][b]) );
-        }
-        stress[a][a] += (TrS / NDIMS);
-      }
-
-      // copy stress back into mode
-      mode[4] = stress[0][0];
-      mode[5] = stress[0][1];
-      mode[6] = stress[0][2];
-
-      mode[7] = stress[1][1];
-      mode[8] = stress[1][2];
-
-      mode[9] = stress[2][2];
-
-      // Ghosts are relaxed to zero immediately
-      mode[10] = 0.0;
-      mode[11] = 0.0;
-      mode[12] = 0.0;
-      mode[13] = 0.0;
-      mode[14] = 0.0;
-
-      // project back to the velocity basis
-      for (int p = 0; p < NMODES; ++p) {
-        double fp = 0;
-        for (int m = 0; m < NMODES; ++m) {
-          fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
-        }
-        accessor(f_new, p) = fp;
-      }
-    }
-    });
+  });
 
   return;
 }
@@ -200,7 +113,7 @@ void AmrSim::Stream(int const LEVEL) {
 
   for_point_in(f_nxt, [&f_nxt, &f_prop](const auto& dest) {
     DistFn::PropagatePoint(dest, f_nxt, f_prop);
-  });
+  }, 1 /* HALO_DEPTH of one to include inner ghost cells */ );
 
   // swap propagated distribution function in to next
   std::swap(f_nxt, f_prop);
@@ -211,12 +124,12 @@ void AmrSim::Stream(int const LEVEL) {
 void AmrSim::CollideLevel(const int LEVEL) {
   const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
   const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
-  const auto& f_old = levels.at(LEVEL).now.get<DistFn>();
-  auto& f_new = levels.at(LEVEL).next.get<DistFn>();
+  auto& f_pc = levels.at(LEVEL).next.get<DistFn>();
 
-  Collide(f_old, f_new, OMEGA_S, OMEGA_B);
+  DistFnFillPatch(LEVEL, f_pc);
+  Collide(f_pc, OMEGA_S, OMEGA_B);
 
-  f_new.FillBoundary(geom[LEVEL].periodicity());
+  f_pc.FillBoundary(geom[LEVEL].periodicity());
 
   return;
 }
@@ -471,7 +384,7 @@ void AmrSim::DistFnFillPatch(const int level, amrex::MultiFab& dest_mf) {
 
     amrex::FillPatchTwoLevels(dest_mf, fine.time.current, coarse_mf, coarse_time,
       fine_mf, fine_time, 0, 0, NMODES, geom[level-1], geom[level],
-      coarse_physbc, 0, fine_physbc, 0, refRatio(level-1), mapper, f_bndry, 0);
+      coarse_physbc, 0, fine_physbc, 0, refRatio(level-1), &mapper, f_bndry, 0);
   }
 
   return;
@@ -492,7 +405,7 @@ void AmrSim::DistFnFillFromCoarse(const int level, amrex::MultiFab& fine_mf) {
 
   amrex::InterpFromCoarseLevel(fine_mf, levels[level].time.current, levels[level-1].now.get<DistFn>(), 0, 0,
     NMODES, geom[level-1], geom[level], coarse_physbc, 0, fine_physbc, 0,
-    refRatio(level-1), mapper, f_bndry, 0);
+    refRatio(level-1), &mapper, f_bndry, 0);
 
   return;
 }
@@ -522,88 +435,198 @@ void AmrSim::RohdeCycle(int const COARSE_LEVEL) {
   // The method has been modified to account for the fact that our grid is not
   // locally refined, but instead multiple grids exist
 
-  // calculate relaxation frequency at coarse and fine levels
-  const double OMEGA_S_C = 1.0 / (tau_s.at(COARSE_LEVEL)+0.5);
-  const double OMEGA_B_C = 1.0 / (tau_b.at(COARSE_LEVEL)+0.5);
-  const double OMEGA_S_F = 1.0 / (tau_s.at(COARSE_LEVEL+1)+0.5);
-  const double OMEGA_B_F = 1.0 / (tau_b.at(COARSE_LEVEL+1)+0.5);
-
   // build post collision multifabs
   const int REF_RATIO = refRatio(COARSE_LEVEL)[0];
-  const auto& f_C = levels[COARSE_LEVEL].now.get<DistFn>();
-  const auto& f_F = levels[COARSE_LEVEL+1].now.get<DistFn>();
 
-  amrex::MultiFab f_C_pc(f_C.boxArray(), f_C.DistributionMap(), NMODES, 1);
-  amrex::MultiFab f_F_pc(f_F.boxArray(), f_F.DistributionMap(), NMODES,
-    2*REF_RATIO);
+  InitPostCollision(COARSE_LEVEL);
 
-  // initialise post collision multifabs
-  f_C_pc.setVal(0.0);
-  f_F_pc.setVal(0.0);
+  CoarseCollide(COARSE_LEVEL);
 
-  // step 1: Collide on coarse level
-  Collide(f_C, f_C_pc, OMEGA_S_C, OMEGA_B_C, fine_masks[COARSE_LEVEL]);
-
-  // branch here for subcycling -- if fine level is *finest* level just do
-  // collide and stream, otherwise call RohdeCycle on fine level
-  // in order to maintain a constant speed of sound the fine level should be
-  // iterated as many times as the refinement ratio
-  if (COARSE_LEVEL + 1 == finest_level) {
-    for (int iter = 0; iter < REF_RATIO; ++iter) {
-      // step 2: Collide on fine level
-      Collide(f_F, f_F_pc, OMEGA_S_F, OMEGA_B_F);
-      // step 3: Fill fine boundary from coarse
-      Explode(COARSE_LEVEL);
-      // step 4: Stream on fine level
-      Stream(COARSE_LEVEL+1);
-    }
-    // we should make sure actual level data is kept up-to-date for finest level
-    // note that this assumes the data in levels[FINE_LEVEL].next is meaningful
-    CompleteTimeStep(COARSE_LEVEL+1);
+  if(COARSE_LEVEL+1 == finest_level) {
+    InitPostCollision(finest_level);
+    FineCollide(finest_level);
+    Stream(finest_level);
+    FineCollide(finest_level);
+    Stream(finest_level);
+    ZeroInvalidComponents(finest_level);
+    UpdateDistribution(finest_level); // smart enough to add two timesteps to finest level
   } else {
-    for (int iter = 0; iter < REF_RATIO; ++iter) {
-      RohdeCycle(COARSE_LEVEL+1);
-    }
+    for (int iter = 0; iter < REF_RATIO; ++iter) RohdeCycle(COARSE_LEVEL+1);
   }
 
-  // step 5: Stream on coarse level
-  // Note that we actually have to make sure we don't pull from cells which are covered by the fine grid
-  // probably best to zero during collision
-  StreamInterior(f_C_pc, levels[COARSE_LEVEL].next.get<DistFn>());
+  Stream(COARSE_LEVEL);
 
-  // step 6: Sum from fine level in to ghost level
+  // get contribution from fine level
   SumFromFine(COARSE_LEVEL);
 
-  // mark completion of time step for coarse level (includes now <-> next)
-  CompleteTimeStep(COARSE_LEVEL);
+  ZeroInvalidComponents(COARSE_LEVEL);
+
+  if (COARSE_LEVEL == 0) UpdateBoundaries(COARSE_LEVEL);
+
+  UpdateDistribution(COARSE_LEVEL);
 
   return;
 }
 
-void AmrSim::Explode(int const COARSE_LEVEL) {
-  // Should take the coarse value and copy it to all fine cells covered by it.
-  // They should have the *same* value as the coarse cell, it should *not* be evenly
-  // divided amongst the fine cells.
+void AmrSim::InitPostCollision(int const LEVEL) {
+  // if the coarsest level, just copy from precollision, else
+  // fill from coarse level too
+  auto& f_pc = levels[LEVEL].next.get<DistFn>();
+  DistFnFillPatch(LEVEL, f_pc);
+
+  if (LEVEL != 0) {
+    // zero outer ghost cells
+    for_point_in_boundary(f_pc, 1, [&](auto accessor) {
+      accessor(f_pc) = 0.0;
+    });
+  }
+
+  return;
+}
+
+void AmrSim::CoarseCollide(int const LEVEL) {
+  // collide in-place in post collision array
+  auto& f_pc = levels[LEVEL].next.get<DistFn>();
+
+  // fine mask
+  const amrex::iMultiFab& FINE_MASK = fine_masks.at(LEVEL);
+
+  // relaxation rates
+  const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
+  const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
+
+  for_point_in(f_pc, [&](auto accessor) {
+    if (accessor(FINE_MASK) == FINE_VAL) {
+      for (int m = 0; m < DistFn::NV; ++m) accessor(f_pc, m) = 0.0;
+    } else {
+      auto mode = std::array<double, DistFn::NV>{};
+
+      for (int m = 0; m < DistFn::NV; ++m) {
+        for (int p = 0; p < DistFn::NV; ++p) {
+          mode[m] += accessor(f_pc, p) * MODE_MATRIX[m][p];
+        }
+      }
+
+      const auto& density = mode[0];
+      // no forcing is currently present in the model,
+      // so we disregard uDOTf for now
+      double velocity[NDIMS];
+      double usq = 0.0;
+      for (int a = 0; a < NDIMS; ++a) {
+        velocity[a] = mode[a+1] / density;
+        usq += velocity[a] * velocity[a];
+      }
+
+      double stress[NDIMS][NDIMS] = {
+        {mode[4], mode[5], mode[6]},
+        {mode[5], mode[7], mode[8]},
+        {mode[6], mode[8], mode[9]}
+      };
+
+      // Form the trace
+      double TrS = 0.0;
+      for (int a = 0; a < NDIMS; ++a) {
+        TrS += stress[a][a];
+      }
+
+      // Form the traceless part
+      for (int a = 0; a < NDIMS; ++a) {
+        stress[a][a] -= (TrS / NDIMS);
+      }
+
+      // Relax the trace
+      TrS -= OMEGA_B * (TrS - density*usq);
+
+      // Relax the traceless part
+      for (int a = 0; a < NDIMS; ++a) {
+        for (int b = 0; b < NDIMS; ++b) {
+          stress[a][b] -= OMEGA_S * (stress[a][b] - density
+                          * ( velocity[a]
+                          * velocity[b]
+                          - usq * DELTA[a][b]) );
+        }
+        stress[a][a] += (TrS / NDIMS);
+      }
+
+      // copy stress back into mode
+      mode[4] = stress[0][0];
+      mode[5] = stress[0][1];
+      mode[6] = stress[0][2];
+
+      mode[7] = stress[1][1];
+      mode[8] = stress[1][2];
+
+      mode[9] = stress[2][2];
+
+      // Ghosts are relaxed to zero immediately
+      mode[10] = 0.0;
+      mode[11] = 0.0;
+      mode[12] = 0.0;
+      mode[13] = 0.0;
+      mode[14] = 0.0;
+
+      // project back to the velocity basis
+      for (int p = 0; p < NMODES; ++p) {
+        double fp = 0;
+        for (int m = 0; m < NMODES; ++m) {
+          fp += mode[m] * MODE_MATRIX_INVERSE[p][m];
+        }
+        accessor(f_pc, p) = fp;
+      }
+    }
+    });
+
+  return;
+}
+
+void AmrSim::FineCollide(const int LEVEL) {
+  const double OMEGA_S = 1.0 / (tau_s.at(LEVEL)+0.5);
+  const double OMEGA_B = 1.0 / (tau_b.at(LEVEL)+0.5);
+  auto& f_pc = levels.at(LEVEL).next.get<DistFn>();
+
+  Collide(f_pc, OMEGA_S, OMEGA_B);
+
   return;
 }
 
 void AmrSim::SumFromFine(int const COARSE_LEVEL) {
+  // fine level 'now' dist func should be up to date
+  const amrex::MultiFab& f_fine = levels[COARSE_LEVEL+1].now.get<DistFn>();
+  // we are working on coarse level 'next' dist func
+  amrex::MultiFab& f_coarse = levels[COARSE_LEVEL].next.get<DistFn>();
+
+  amrex::sum_fine_to_coarse(f_fine, f_coarse, 0, NMODES,
+    refRatio(COARSE_LEVEL), geom[COARSE_LEVEL], geom[COARSE_LEVEL+1]);
+
   return;
 }
 
-void AmrSim::StreamInterior(const amrex::MultiFab& f_SRC,
-amrex::MultiFab& f_dest) {
-  for_point_in(f_SRC, [&f_SRC, &f_dest](const auto& dest_acc) {
-    DistFn::PropagatePoint(dest_acc, f_SRC, f_dest);
+void AmrSim::ZeroInvalidComponents(int const LEVEL) {
+  const int HALO_DEPTH = 2;
+  auto& f_pc = levels[LEVEL].next.get<DistFn>();
+
+  for_point_in_boundary(f_pc, HALO_DEPTH, [&](auto& dest) {
+    auto vbox = dest.mfi.validbox();
+    for (auto m : range(DistFn::NV))
+      if (
+        !vbox.contains(dest.pos - 2 * amrex::IntVect(DistFn::VelocitySet::C[m]))
+        ) dest(f_pc,m) = 0.0;
   });
+
   return;
 }
 
-void AmrSim::CompleteTimeStep(int const LEVEL) {
+void AmrSim::UpdateDistribution(int const LEVEL) {
   auto& lvl = levels[LEVEL];
-  lvl.time.current += lvl.time.delta;
-  ++lvl.time.step;
-  lvl.UpdateNow();
+  if (LEVEL && LEVEL == finest_level) {
+    // finest level is iterated twice
+    lvl.time.current += 2*lvl.time.delta;
+    lvl.time.step += 2;
+  } else {
+    lvl.time.current += lvl.time.delta;
+    ++lvl.time.step;
+  }
+  std::swap(lvl.now.get<DistFn>(), lvl.next.get<DistFn>());
   return;
 }
 
@@ -679,7 +702,7 @@ void AmrSim::MakeNewLevelFromCoarse(int level, double time, const amrex::BoxArra
   DistFnFillFromCoarse(level, lvl.now.get<DistFn>());
 
   // update boundary conditions
-  UpdateBoundaries(level);
+  //UpdateBoundaries(level);
 
   // calculate hydrodynamic variables at this level
   CalcHydroVars(level);
@@ -710,7 +733,7 @@ void AmrSim::RemakeLevel(int level, double time, const amrex::BoxArray& ba, cons
   levels[level].time.current = time;
 
   // update boundaries of distribution function
-  UpdateBoundaries(level);
+  //UpdateBoundaries(level);
 
   // calculate hydrodynamic variables on this level using new dist_fn
   CalcHydroVars(level);
@@ -913,18 +936,18 @@ void AmrSim::CalcHydroVars(int const LEVEL) {
     for (int k = lo[2]; k <= hi[2]; ++k) {
       for (int j = lo[1]; j <= hi[1]; ++j) {
         for (int i = lo[0]; i <= hi[0]; ++i) {
-	  const amrex::IntVect pos = {i, j, k};
+      	  const amrex::IntVect pos = {i, j, k};
 
-	  const auto mode = [&](){
-	    auto mode = std::array<double, DistFn::NV>{};
-	    for (int m = 0; m < DistFn::NV; ++m) {
-	      mode[m] = 0.0;
-	      for (int p = 0; p < DistFn::NV; ++p) {
-		mode[m] += fab_dist_fn(pos, p) * MODE_MATRIX[m][p];
-	      }
-	    }
-	    return mode;
-	  }();
+      	  const auto mode = [&](){
+      	    auto mode = std::array<double, DistFn::NV>{};
+      	    for (int m = 0; m < DistFn::NV; ++m) {
+      	      mode[m] = 0.0;
+      	      for (int p = 0; p < DistFn::NV; ++p) {
+            		mode[m] += fab_dist_fn(pos, p) * MODE_MATRIX[m][p];
+      	      }
+      	    }
+      	    return mode;
+      	  }();
 
           fab_density(pos) = mode[0];
           for (int a = 0; a < NDIMS; ++a) {
@@ -946,7 +969,6 @@ void AmrSim::Iterate(int const nsteps) {
     }
   } else {
     for (int t = 0; t < nsteps; ++t) {
-      //SubCycle(0, 1);  // old method
       RohdeCycle(0);
     }
   }
