@@ -76,7 +76,7 @@ using Accessor = decltype(detail::accessor_deducer(std::make_index_sequence<AMRE
 // MultiFab. The function will be passed an Accessor instance which
 // will index into a MultiFab for you.
 template<typename PosFunc>
-void for_point_in(const amrex::MultiFab& mf, PosFunc&& f) {
+void for_point_in(const amrex::MultiFab& mf, PosFunc&& f, int const HALO_DEPTH = 0) {
   for (amrex::MFIter mfi(mf); mfi.isValid(); ++mfi) {
     const auto box = mfi.validbox();
     const auto& lo = box.smallEnd();
@@ -84,9 +84,9 @@ void for_point_in(const amrex::MultiFab& mf, PosFunc&& f) {
 
     auto acc = Accessor{mfi};
     // loops ordered fortran style
-    for (int i = lo[0]; i <= hi[0]; ++i)
-      for (int j = lo[1]; j <= hi[1]; ++j)
-        for (int k = lo[2]; k <= hi[2]; ++k) {
+    for (int i = lo[0]-HALO_DEPTH; i <= hi[0]+HALO_DEPTH; ++i)
+      for (int j = lo[1]-HALO_DEPTH; j <= hi[1]+HALO_DEPTH; ++j)
+        for (int k = lo[2]-HALO_DEPTH; k <= hi[2]+HALO_DEPTH; ++k) {
 	         acc.pos = {i, j, k};
 	         f(acc);
          }
