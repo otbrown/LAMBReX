@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(LAMBREX_USE_CONAN "Build dependencies with Conan" ON)
+option(LAMBREX_USE_CONAN "Build dependencies with Conan" OFF)
 option(LAMBREX_BUILD_EXAMPLES "Build the examples" ON)
 option(LAMBREX_BUILD_TESTS "Build the tests" ON)
 
