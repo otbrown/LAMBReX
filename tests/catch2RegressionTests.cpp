@@ -151,27 +151,24 @@ TEST_CASE("ml_pulse Regression", "[regression]")
     ratio *= 2;
   }
 
+  level = 0;
   sim.Iterate(100);
-  for (level = 0; level <= MAX_LEVEL; ++level) sim.CalcHydroVars(level);
+  sim.CalcHydroVars(level);
 
-  ratio = 1;
-  for (level = 0; level <= MAX_LEVEL; ++level) {
-    rhodex = 0;
-    veldex = 0;
-    for (k = ratio*LO[2]; k <= ratio*HI[2]; k += ratio) {
-      for (j = ratio*LO[1]; j <= ratio*HI[1]; j += ratio) {
-        for (i = ratio*LO[0]; i <= ratio*HI[0]; i += ratio) {
-          INFO("t=100 (i,j,k)=(" << i << "," << j << "," << k << ") level="
-            << level << " rhodex=" << rhodex)
-          REQUIRE(sim.GetDensity(i, j, k, level) == Approx(RHO_t100[rhodex++]));
-          for (n = 0; n < AMREX_SPACEDIM; ++n) {
-            INFO("veldex=" << veldex << " n=" << n)
-            REQUIRE(sim.GetVelocity(i, j, k, n, level) == Approx(VEL_t100[veldex++]));
-          }
+  rhodex = 0;
+  veldex = 0;
+  for (k = LO[2]; k <= HI[2]; ++k) {
+    for (j = LO[1]; j <= HI[1]; ++j) {
+      for (i = LO[0]; i <= HI[0]; ++i) {
+        INFO("t=100 (i,j,k)=(" << i << "," << j << "," << k << ") level="
+          << level << " rhodex=" << rhodex)
+        REQUIRE(sim.GetDensity(i, j, k, level) == Approx(RHO_t100[rhodex++]));
+        for (n = 0; n < AMREX_SPACEDIM; ++n) {
+          INFO("veldex=" << veldex << " n=" << n)
+          REQUIRE(sim.GetVelocity(i, j, k, n, level) == Approx(VEL_t100[veldex++]));
         }
       }
     }
-    ratio *= 2;
   }
 
   sim.Iterate(100);
