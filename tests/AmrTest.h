@@ -14,7 +14,8 @@ public:
   bool VelocityEmpty(const int level) const { return velocity.at(level).empty(); }
   bool DistFnEmpty(const int level) const { return levels[level].now.get<DistFn>().empty(); }
 
-
+  const int CoarseVal() { return COARSE_VAL; }
+  const int FineVal() { return FINE_VAL; }
   std::vector<amrex::MultiFab>& GetVelocity() { return velocity; };
   inline auto& GetLevels() {
     return levels;
@@ -35,6 +36,7 @@ public:
   std::vector<double>& GetTauS() { return tau_s; }
   std::vector<double>& GetTauB() { return tau_b; }
   std::vector<double>& GetMass() { return mass; }
+  amrex::iMultiFab& GetFineMask(int const LEVEL) {return fine_masks.at(LEVEL);}
 
   void CallErrorEst(int const, amrex::TagBoxArray&);
   void CallMakeNewLevelFromScratch(const int, const amrex::BoxArray&,
