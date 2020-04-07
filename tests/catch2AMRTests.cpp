@@ -11,12 +11,12 @@ TEST_CASE("OneLevel", "[AMR]")
   const int NY = 10;
   const int NZ = 50;
   const int LEVEL = 0;
+  const std::array<int,3> PERIODICITY{1, 1, 1};
   const double DENSITY = 0.5;
   const double VELOCITY = 0.2;
   const double TAU = 0.01;
 
-  lambrexSetAmr(NX, NY, NZ, LEVEL);
-  AmrTest sim(TAU, TAU);
+  AmrTest sim(NX, NY, NZ, LEVEL, PERIODICITY, TAU, TAU);
   sim.SetInitialDensity(DENSITY);
   sim.SetInitialVelocity(VELOCITY);
   sim.InitFromScratch(0.0);
@@ -121,23 +121,23 @@ TEST_CASE("TwoLevel", "[AMR]") {
   const int NZ = 12;
   const int MAX_LEVEL = 1;
   const int NUM_LEVELS = MAX_LEVEL + 1;
+  const std::array<int,3> PERIODICITY{1, 1, 1};
   const double DENSITY = 0.8;
   const double VELOCITY = 0.1;
   const double TAU = 0.01;
   const std::array<int,NDIMS> LO_CORNER({0, 0, 0});
   const std::array<int,NDIMS> HI_CORNER({NX-1, NY-1, NZ-1});
 
-  lambrexSetAmr(NX, NY, NZ, MAX_LEVEL);
-  AmrTest sim(TAU, TAU);
+  AmrTest sim(NX, NY, NZ, MAX_LEVEL, PERIODICITY, TAU, TAU);
 
   sim.SetInitialDensity(DENSITY);
   sim.SetInitialVelocity(VELOCITY);
   sim.InitFromScratch(0.0);
 
   SECTION("Initialisation") {
-    // refinement ratio size is NUM_LEVELS-1, since only has meaning "between"
+    // refinement ratio size is NUM_LEVELS, but only has meaning "between"
     // levels. Default is 2 in every direction, we don't change this yet.
-    REQUIRE(sim.refRatio().size() == MAX_LEVEL);
+    REQUIRE(sim.refRatio().size() == MAX_LEVEL+1);
     for (int level = 1; level < NUM_LEVELS; ++level) {
       for (int dim = 0; dim < NDIMS; ++dim)
         REQUIRE(sim.refRatio(level-1)[dim] == 2);
@@ -145,10 +145,6 @@ TEST_CASE("TwoLevel", "[AMR]") {
 
     REQUIRE(sim.maxLevel() == MAX_LEVEL);
     REQUIRE(sim.GetVelocity().size() == NUM_LEVELS);
-    //REQUIRE(sim.GetDistFn().size() == NUM_LEVELS);
-    //REQUIRE(sim.GetSimTime().size() == NUM_LEVELS);
-    //REQUIRE(sim.GetDt().size() == NUM_LEVELS);
-    //REQUIRE(sim.GetTimeStep().size() == NUM_LEVELS);
     REQUIRE(sim.GetLevels().size() == NUM_LEVELS);
     REQUIRE(sim.GetTauS().size() == NUM_LEVELS);
     REQUIRE(sim.GetTauB().size() == NUM_LEVELS);

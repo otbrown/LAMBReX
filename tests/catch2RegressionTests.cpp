@@ -14,6 +14,7 @@ TEST_CASE("pulse Regression", "[regression]")
   double z_mean;
   int i, j, k, n, rhodex, veldex;
   const int LEVEL = 0;
+  const std::array<int,NDIMS> PERIODICITY{1, 1, 1};
 
   // initial density
   std::vector<double> rho_0(NUMEL, 1.0);
@@ -33,8 +34,7 @@ TEST_CASE("pulse Regression", "[regression]")
   double u_0 = 0.0;
 
   // initialise AmrSim
-  lambrexSetAmr(NX, NY, NZ, LEVEL);
-  AmrSim sim(TAU, TAU);
+  AmrSim sim(NX, NY, NZ, LEVEL, PERIODICITY, TAU, TAU);
   sim.SetInitialDensity(rho_0);
   sim.SetInitialVelocity(u_0);
   sim.InitFromScratch(0.0);
@@ -92,13 +92,14 @@ TEST_CASE("pulse Regression", "[regression]")
   }
 }
 
-TEST_CASE("ml_pulse Regression", "[!hide]")
+TEST_CASE("ml_pulse Regression", "[regression]")
 {
   const int NX = 10;
   const int NY = 10;
   const int NZ = 50;
   const int NUMEL = NX*NY*NZ;
   const double TAU = 0.5;
+  const std::array<int,3> PERIODICITY{1, 1, 1};  
   const int MAX_LEVEL = 1;
   const double AMPLITUDE = 0.01;
   const std::array<int,3> LO = { 0, 0, 0 };
@@ -124,8 +125,7 @@ TEST_CASE("ml_pulse Regression", "[!hide]")
   double u_0 = 0.0;
 
   // initialise AmrSim
-  lambrexSetAmr(NX, NY, NZ, MAX_LEVEL);
-  AmrSim sim(TAU, TAU);
+  AmrSim sim(NX, NY, NZ, MAX_LEVEL, PERIODICITY, TAU, TAU);
   sim.SetInitialDensity(rho_0);
   sim.SetInitialVelocity(u_0);
   sim.InitFromScratch(0.0);

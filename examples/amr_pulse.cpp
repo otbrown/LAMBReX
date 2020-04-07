@@ -34,10 +34,9 @@ int main (int argc, char * argv[])
   // initial velocity
   double u_0 = 0.0;
 
-  lambrexInit(periodicity);
-  lambrexSetAmr(nx, ny, nz, max_level);
+  lambrexInit();
   {
-    AmrSim lbrx(tau, tau);
+    AmrSim lbrx(nx, ny, nz, max_level, periodicity, tau, tau);
     lbrx.SetInitialDensity(rho_0);
     lbrx.SetInitialVelocity(u_0);
     lbrx.InitFromScratch(0.0);
