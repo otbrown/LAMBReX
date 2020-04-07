@@ -5,6 +5,5 @@
 
 void lambrexInit();
 void lambrexFinalise();
-int binGCD(int, int);
 
 #endif
