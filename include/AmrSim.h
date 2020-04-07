@@ -1,11 +1,19 @@
+// -*- mode: c++; -*-
 #ifndef AMRSIM_H
 #define AMRSIM_H
 
 #include "AMReX_AmrCore.H"
+#include "AMReX_iMultiFab.H"
 #include "AMReX_MultiFab.H"
 #include "AMReX_BCRec.H"
 #include "AMReX_PhysBCFunct.H"
 #include "AMReX_Interpolater.H"
+
+#include "amr_help.h"
+#include "velocity_set.h"
+#include "component.h"
+#include "multilevel.h"
+#include "d3q15_bgk.h"
 
 // number of spatial dimensions and velocities are model dependent
 // and cannot be changed (for now)
@@ -24,7 +32,6 @@ protected:
 
   // model parameters
   constexpr static double CS2 = 1.0 / 3.0; // speed of sound squared
-  constexpr static int HALO_DEPTH = 1;
   constexpr static double NL_DENSITY = -1.0;
   constexpr static double NL_VELOCITY = -3E8;
   static const double DELTA[NDIMS][NDIMS];
@@ -41,13 +48,9 @@ protected:
 
   // address of interpolator to use between coarse and fine grids
   // these are constructed as globals by AMReX...
-  // cell_cons_interp : cell conservative linear interpolation
-  amrex::Interpolater * mapper = &amrex::cell_cons_interp;
+  // PCInterp : piecewise interpolation
+  amrex::PCInterp mapper;
 
-  // time keeping, constant per level
-  std::vector<double> sim_time;
-  std::vector<double> dt;
-  std::vector<int> time_step;
   std::vector<double> tau_s;
   std::vector<double> tau_b;
 
@@ -55,11 +58,17 @@ protected:
   std::vector<double> mass;
 
   // hydrodynamic variables (output arrays)
-  std::vector<amrex::MultiFab> density;
   std::vector<amrex::MultiFab> velocity;
 
   // distribution function (work array)
-  std::vector<amrex::MultiFab> dist_fn;
+  std::vector<SimLevelData> levels;
+
+  // masks to keep track of which parts of the coarse level are covered by a
+  // fine grid. The iMultiFab contains COARSE_VAL if not, FINE_VAL if so. The
+  // convention from AMReX itself is that COARSE_VAL=0, FINE_VAL=1.
+  const int COARSE_VAL = 0;
+  const int FINE_VAL = 1;
+  std::vector<amrex::iMultiFab> fine_masks;
 
   // member functions
   int FLindex(int const i, int const j, int const k, int const n,
@@ -74,8 +83,15 @@ protected:
   }
   void SwapElements(double * const, int const, int const);
   void UpdateBoundaries(int const);
-  void Collide(int const);
-  void Propagate(int const);
+  void Collide(amrex::MultiFab&, const double, const double);
+  void Stream(int const);
+  void CollideLevel(int const);
+  void CollideAndStream(int const LEVEL) {
+    CollideLevel(LEVEL);
+    Stream(LEVEL);
+    levels.at(LEVEL).UpdateNow();
+    return;
+  }
   void InitDensity(int const);
   void InitVelocity(int const);
   void ComputeDt(int const);
@@ -86,6 +102,17 @@ protected:
   void DistFnFillPatch(int const, amrex::MultiFab&);
   void DistFnFillFromCoarse(int const, amrex::MultiFab&);
   bool TagCell(int const, const amrex::IntVect&);
+  void MakeFineMask(int const);
+
+  // Rohde Steps
+  void RohdeCycle(int const);
+  void InitPostCollision(int const);
+  void CoarseCollide(int const);
+  void FineCollide(int const);
+  void FillGhostFromCoarse(int const);
+  void SumFromFine(int const);
+  void ZeroInvalidComponents(int const);
+  void UpdateDistribution(int const);
 
   // AMRCore pure virtual functions
   void ErrorEst(int, amrex::TagBoxArray&, double, int) override;
@@ -99,8 +126,12 @@ protected:
 
 public:
   AmrSim(double const, double const);
-  double GetTime(int const level) const { return sim_time.at(level); }
-  int GetTimeStep(int const level) const { return time_step.at(level); }
+  inline double GetTime(int const level) const {
+    return levels.at(level).time.current;
+  }
+  int GetTimeStep(int const level) const {
+    return levels.at(level).time.step;
+  }
   std::array<int,NDIMS> GetDims() const {
     return std::array<int,NDIMS>{NX,NY,NZ}; }
   bool OnProcessDensity(double const rho) const { return rho != NL_DENSITY; }

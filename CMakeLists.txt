@@ -5,6 +5,9 @@ project(
   DESCRIPTION "Lattice Boltzmann code built on AMReX"
   LANGUAGES CXX
   )
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(LAMBREX_USE_CONAN "Build dependencies with Conan" OFF)
 option(LAMBREX_BUILD_EXAMPLES "Build the examples" ON)
@@ -22,11 +25,12 @@ if (LAMBREX_USE_CONAN)
 endif()
 
 # You may need to set AMREX_DIR to help cmake find the config files
-find_package(AMReX 19.08 REQUIRED)
+find_package(AMReX 19.08 REQUIRED 3D)
 
 add_subdirectory(src)
 if (LAMBREX_BUILD_EXAMPLES)
   add_subdirectory(examples)
+  add_subdirectory(examples/debug)
 endif()
 
 if (LAMBREX_BUILD_TESTS)

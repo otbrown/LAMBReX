@@ -1,6 +1,6 @@
 add_library(lambrex STATIC lambrex.cpp AmrSim.cpp)
 
-target_compile_features(lambrex PUBLIC cxx_std_11)
+target_compile_features(lambrex PUBLIC cxx_std_17)
 
 # clang/GCC warnings
 target_compile_options(lambrex
@@ -10,5 +10,5 @@ target_include_directories(lambrex
   PUBLIC ${CMAKE_SOURCE_DIR}/include
   )
 target_link_libraries(lambrex
-  PUBLIC AMReX::amrex gfortran
+  PUBLIC AMReX::amrex AMReX::Flags_CXX gfortran
   )

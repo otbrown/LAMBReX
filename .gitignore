@@ -33,6 +33,7 @@
 
 # Project Ignores
 .gcc-flags.json
+.clang_complete
 libamrex/*
 build/*
 bins/*
