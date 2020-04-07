@@ -1,51 +1,15 @@
 #include "lambrex.h"
 #include "AMReX_ParmParse.H"
 
-void lambrexInit(const std::array<int,NDIMS>& periodicity) {
+void lambrexInit() {
   int argc = 0;
   char ** argv;
-
-  {
-    amrex::ParmParse pp;
-    pp.add("title", "AmrSim");
-  }
-  {
-    amrex::ParmParse pp("amr");
-    pp.add("v", 1);
-  }
-  // periodicity is set here as, despite appearances, it is *not* configurable
-  // later on, at least for level 0
-  {
-    amrex::ParmParse pp("geometry");
-    pp.addarr("is_periodic",
-      std::vector<int>(periodicity.begin(), periodicity.end()));
-    pp.add("coord_sys", 0); // 0 -> Cartesian coordinates
-    // determine "physical" problem domain size
-    pp.addarr("prob_lo", std::vector<double>({0.0, 0.0, 0.0}));
-    pp.addarr("prob_hi", std::vector<double>({1.0, 1.0, 1.0}));
-  }
-
-  amrex::Initialize(argc, argv, true);
-
+  amrex::Initialize(argc, argv, false);
   return;
 }
 
-void lambrexFinalise(void) {
+void lambrexFinalise() {
   amrex::Finalize();
-  return;
-}
-
-void lambrexSetAmr(const int nx, const int ny, const int nz,
-const int max_ref_level) {
-
-  {
-    amrex::ParmParse pp("amr");
-    // n_cell determines no. of grid points in every direction
-    pp.addarr("n_cell", std::vector<int>({nx, ny, nz}));
-    pp.add("max_level", max_ref_level);
-    pp.add("blocking_factor", 1);
-  }
-
   return;
 }
 
