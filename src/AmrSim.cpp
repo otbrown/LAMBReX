@@ -750,11 +750,28 @@ void AmrSim::ClearLevel(int level) {
   return;
 }
 
-AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
-  : NX(geom[0].Domain().length(0)), NY(geom[0].Domain().length(1)),
-    NZ(geom[0].Domain().length(2)), NUMEL(NX*NY*NZ), COORD_SYS(0),
-    PERIODICITY{ geom[0].period(0), geom[0].period(1), geom[0].period(2) },
-    bfunc(DistFnFillShim), levels(max_level + 1)
+AmrSim::AmrSim(int const nx, int const ny, int const nz, 
+int const max_ref_level, const std::array<int,NDIMS>& periodicity,
+double const tau_s_0, double const tau_b_0)
+: AmrCore( 
+    amrex::Geometry(
+      amrex::Box( amrex::IntVect(0,0,0), amrex::IntVect(nx-1,ny-1,nz-1) ),
+      amrex::RealBox( std::array<double,NDIMS>({0.0, 0.0, 0.0}), 
+        std::array<double,NDIMS>({1.0, 1.0, 1.0}) ),
+      0, periodicity), 
+    amrex::AmrInfo{
+      1, // verbose 
+      max_ref_level, // max_level
+      // refinement ratio (2 on every level)
+      amrex::Vector<amrex::IntVect> {(size_t) max_ref_level+1, amrex::IntVect(2,2,2)},
+      // blocking factor (1 on every level)
+      amrex::Vector<amrex::IntVect> {(size_t) max_ref_level+1, amrex::IntVect(1,1,1)}
+      }
+    ),
+  NX(geom[0].Domain().length(0)), NY(geom[0].Domain().length(1)),
+  NZ(geom[0].Domain().length(2)), NUMEL(NX*NY*NZ), COORD_SYS(0),
+  PERIODICITY{ geom[0].period(0), geom[0].period(1), geom[0].period(2) },
+  bfunc(DistFnFillShim), levels(max_ref_level+1)
 {
   std::cout << "NX: " << NX << " NY: " << NY << " NZ: " << NZ << std::endl;
   // resize vectors
@@ -782,7 +799,7 @@ AmrSim::AmrSim(double const tau_s_0, double const tau_b_0)
   // initialise relaxation time vectors at level 0
   tau_s.at(0) = tau_s_0;
   tau_b.at(0) = tau_b_0;
-};
+}
 
 void AmrSim::SetInitialDensity(const double rho_init) {
   initial_density.assign(NUMEL, rho_init);
@@ -804,7 +821,6 @@ void AmrSim::SetInitialVelocity(const std::vector<double> u_init) {
   return;
 }
 
-// TODO: have this return an optional
 double AmrSim::GetDensity(const int i, const int j, const int k,
 const int LEVEL) const {
   amrex::IntVect pos(i,j,k);

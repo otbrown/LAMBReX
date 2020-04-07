@@ -125,7 +125,8 @@ protected:
   void ClearLevel(int) override;
 
 public:
-  AmrSim(double const, double const);
+  AmrSim(int const, int const, int const, int const, 
+    const std::array<int,NDIMS>&, double const, double const);
   inline double GetTime(int const level) const {
     return levels.at(level).time.current;
   }
