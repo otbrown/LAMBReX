@@ -35,11 +35,10 @@ int main (void)
   const double TAU = 0.5;
 
   // initialise AmrSim
-  lambrexInit(periodicity);
-  lambrexSetAmr(N, N, N, MAX_LEVEL);
+  lambrexInit();
   {
     // AmrTest is a derived class which has public functions exposing internals
-    AmrTest sim(TAU, TAU);
+    AmrTest sim(N, N, N, MAX_LEVEL, periodicity, TAU, TAU);
     sim.SetInitialDensity(rho_0);
     sim.SetInitialVelocity(u_0);
     sim.InitFromScratch(0.0);
@@ -51,7 +50,6 @@ int main (void)
     sim.Iterate(1);
     sim.CalcHydroVars(0);
     printDensity(sim, 0);
-   
   }
   lambrexFinalise();
 

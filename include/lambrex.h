@@ -3,9 +3,7 @@
 
 #include "AmrSim.h"
 
-void lambrexInit(const std::array<int,NDIMS>&);
-void lambrexFinalise(void);
-void lambrexSetAmr(const int, const int, const int, const int);
-int binGCD(int, int);
+void lambrexInit();
+void lambrexFinalise();
 
 #endif
