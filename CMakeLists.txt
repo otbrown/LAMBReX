@@ -30,6 +30,7 @@ find_package(AMReX 19.08 REQUIRED 3D)
 add_subdirectory(src)
 if (LAMBREX_BUILD_EXAMPLES)
   add_subdirectory(examples)
+  add_subdirectory(examples/debug)
 endif()
 
 if (LAMBREX_BUILD_TESTS)
